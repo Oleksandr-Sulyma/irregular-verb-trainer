@@ -1,138 +1,832 @@
 <!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>WebStudio</title>
-  </head>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Комплекс Іррегулярних Дієслів</title>
+    <!-- Використовуємо Tailwind CSS для стилізації -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f4f7f9;
+        }
+        /* Стиль для відключення кнопки */
+        .btn-disabled {
+            cursor: not-allowed;
+            opacity: 0.6;
+            background-color: #9ca3af !important;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8 min-h-screen flex items-start justify-center">
 
-  <body>
-    <header>
-      <nav>
-        <a href="./index.html">WebStudio</a>
-        <ul>
-          <li>
-            <a href="">Studio</a>
-          </li>
-          <li>
-            <a href="">Portfolio</a>
-          </li>
-          <li>
-            <a href="">Contacts</a>
-          </li>
-        </ul>
-      </nav>
+    <div id="app" class="w-full max-w-4xl bg-white p-6 rounded-xl shadow-2xl border border-gray-100">
+        <h1 id="mainTitle" class="text-3xl font-bold text-center mb-6 text-gray-800">Комплекс Дієслів</h1>
+        
+        <div id="content" class="space-y-6">
+            <!-- Динамічний контент буде тут -->
+            <div class="text-center text-gray-500">Завантаження інтерфейсу...</div>
+        </div>
+        
+        <button id="backBtn" class="hidden w-full mt-6 py-2 px-4 bg-gray-300 text-gray-800 font-semibold rounded-lg hover:bg-gray-400 transition duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2">
+            <!-- Текст кнопки буде встановлюватися динамічно -->
+        </button>
+        
+    </div>
 
-      <address>
-        <ul>
-          <li>
-            <a href="mailto:info@devstudio.com">info@devstudio.com</a>
-          </li>
-          <li>
-            <a href="tel:+110001111111">+11 (000) 111-11-11</a>
-          </li>
-        </ul>
-      </address>
-    </header>
+    <script>
+        // ГЛОБАЛЬНИЙ СТАН
+        let correctAnswers = 0;
+        let allSentences = []; // Використовується лише для режиму тестування
+        let currentGroupData = []; // Дієслова поточної обраної групи
+        let currentTaskIndex = 0;
+        let currentMode = 'home'; // 'home', 'selectGroup', 'study', 'drill', 'test'
+        let currentGroupIndex = null;
+        
+        // Посилання на DOM-елементи
+        const content = document.getElementById("content");
+        const backBtn = document.getElementById("backBtn");
+        const mainTitle = document.getElementById("mainTitle");
+        
+        // --- ДАНІ ДІЄСЛІВ (14 БЛОКІВ, БЛИЗЬКО 190 СЛІВ) ---
+        // Використовуємо мінімальну кількість прикладів для нових слів для зменшення розміру коду
+        const defaultSentences = (base, past, participle) => [
+            { uk: `Я часто ${base} щось.`, en: `I often ${base} something.`, form: "base" }, 
+            { uk: `Я ${past} це вчора.`, en: `I ${past} it yesterday.`, form: "past" },
+            { uk: `Це було ${participle} давно.`, en: `It has been ${participle} long ago.`, form: "participle" }
+        ];
 
-    <main>
-      <!-- Section 1 Contains -->
-      <section>
-        <h1>Effective Solutions for Your Business</h1>
-        <button type="button">Order Service</button>
-      </section>
-      <!-- Section 2 Our Values-->
-      <section>
-        <h2>Our Values</h2>
-        <ul>
-          <li>
-            <h3>Strategy</h3>
-            <p>
-              Our goal is to identify the business problem to walk away with the
-              perfect and creative solution.
-            </p>
-          </li>
-          <li>
-            <h3>Punctuality</h3>
-            <p>
-              Bring the key message to the brand's audience for the best price
-              within the shortest possible time.
-            </p>
-          </li>
-          <li>
-            <h3>Diligence</h3>
-            <p>
-              Research and confirm brands with the strongest digital growth
-              opportunities and minimize risk.
-            </p>
-          </li>
-          <li>
-            <h3>Technologies</h3>
-            <p>
-              Design practice focused on digital experiences. We bring forth a
-              deep passion for problem-solving.
-            </p>
-          </li>
-        </ul>
-      </section>
+        const verbs = [
+            // ====================================================================
+            // ГРУПА 1: A-A-A (Усі три форми однакові) - 15 слів
+            // ====================================================================
+            { base: "bet", past: "bet", participle: "bet", translation: "закладатись", group: 1, exampleSentences: defaultSentences("bet", "bet", "bet") },
+            { base: "burst", past: "burst", participle: "burst", translation: "вибухати", group: 1, exampleSentences: defaultSentences("burst", "burst", "burst") },
+            { base: "cast", past: "cast", participle: "cast", translation: "кидати", group: 1, exampleSentences: defaultSentences("cast", "cast", "cast") },
+            { base: "cost", past: "cost", participle: "cost", translation: "коштувати", group: 1, exampleSentences: defaultSentences("cost", "cost", "cost") },
+            { base: "cut", past: "cut", participle: "cut", translation: "різати", group: 1, exampleSentences: defaultSentences("cut", "cut", "cut") },
+            { base: "hit", past: "hit", participle: "hit", translation: "вдаряти", group: 1, exampleSentences: defaultSentences("hit", "hit", "hit") },
+            { base: "hurt", past: "hurt", participle: "hurt", translation: "боліти", group: 1, exampleSentences: defaultSentences("hurt", "hurt", "hurt") },
+            { base: "knit", past: "knit", participle: "knit", translation: "в'язати", group: 1, exampleSentences: defaultSentences("knit", "knit", "knit") },
+            { base: "let", past: "let", participle: "let", translation: "дозволяти", group: 1, exampleSentences: defaultSentences("let", "let", "let") },
+            { base: "put", past: "put", participle: "put", translation: "класти", group: 1, exampleSentences: defaultSentences("put", "put", "put") },
+            { base: "read", past: "read", participle: "read", translation: "читати (вимова: /red/)", group: 1, exampleSentences: defaultSentences("read", "read", "read") },
+            { base: "rid", past: "rid", participle: "rid", translation: "позбавлятися", group: 1, exampleSentences: defaultSentences("rid", "rid", "rid") },
+            { base: "set", past: "set", participle: "set", translation: "встановлювати", group: 1, exampleSentences: defaultSentences("set", "set", "set") },
+            { base: "shut", past: "shut", participle: "shut", translation: "зачиняти", group: 1, exampleSentences: defaultSentences("shut", "shut", "shut") },
+            { base: "split", past: "split", participle: "split", translation: "розколювати", group: 1, exampleSentences: defaultSentences("split", "split", "split") },
 
-      <!--Section 3 Our Team-->
-      <section>
-        <h2>Our Team</h2>
-        <ul>
-          <li>
-            <img
-              src="./images/mark-guerrero.jpg"
-              alt="Mark Guerrero - Product Designer"
-              width="264"
-              height="260"
-            />
-            <h3>Mark Guerrero</h3>
-            <p>Product Designer</p>
-          </li>
+            // ====================================================================
+            // ГРУПА 2: A-B-B (-D на -T або -L на -LT) - 15 слів
+            // ====================================================================
+            { base: "bend", past: "bent", participle: "bent", translation: "згинати", group: 2, exampleSentences: defaultSentences("bend", "bent", "bent") },
+            { base: "build", past: "built", participle: "built", translation: "будувати", group: 2, exampleSentences: defaultSentences("build", "built", "built") },
+            { base: "deal", past: "dealt", participle: "dealt", translation: "мати справу", group: 2, exampleSentences: defaultSentences("deal", "dealt", "dealt") },
+            { base: "dream", past: "dreamt", participle: "dreamt", translation: "мріяти", group: 2, exampleSentences: defaultSentences("dream", "dreamt", "dreamt") },
+            { base: "dwell", past: "dwelt", participle: "dwelt", translation: "мешкати", group: 2, exampleSentences: defaultSentences("dwell", "dwelt", "dwelt") },
+            { base: "feel", past: "felt", participle: "felt", translation: "відчувати", group: 2, exampleSentences: defaultSentences("feel", "felt", "felt") },
+            { base: "kneel", past: "knelt", participle: "knelt", translation: "ставати на коліна", group: 2, exampleSentences: defaultSentences("kneel", "knelt", "knelt") },
+            { base: "lend", past: "lent", participle: "lent", translation: "позичати (комусь)", group: 2, exampleSentences: defaultSentences("lend", "lent", "lent") },
+            { base: "mean", past: "meant", participle: "meant", translation: "означати", group: 2, exampleSentences: defaultSentences("mean", "meant", "meant") },
+            { base: "send", past: "sent", participle: "sent", translation: "надсилати", group: 2, exampleSentences: defaultSentences("send", "sent", "sent") },
+            { base: "smell", past: "smelt", participle: "smelt", translation: "нюхати", group: 2, exampleSentences: defaultSentences("smell", "smelt", "smelt") },
+            { base: "speed", past: "sped", participle: "sped", translation: "поспішати", group: 2, exampleSentences: defaultSentences("speed", "sped", "sped") },
+            { base: "spend", past: "spent", participle: "spent", translation: "витрачати", group: 2, exampleSentences: defaultSentences("spend", "spent", "spent") },
+            { base: "spill", past: "spilt", participle: "spilt", translation: "розливати", group: 2, exampleSentences: defaultSentences("spill", "spilt", "spilt") },
+            { base: "spoil", past: "spoilt", participle: "spoilt", translation: "псувати", group: 2, exampleSentences: defaultSentences("spoil", "spoilt", "spoilt") },
 
-          <li>
-            <img
-              src="./images/tom-ford.jpg"
-              alt="Tom Ford - Frontend Developer"
-              width="264"
-              height="260"
-            />
-            <h3>Tom Ford</h3>
-            <p>Frontend Developer</p>
-          </li>
+            // ====================================================================
+            // ГРУПА 3: A-B-B (Закінчення на -T) - 15 слів
+            // ====================================================================
+            { base: "creep", past: "crept", participle: "crept", translation: "повзати", group: 3, exampleSentences: defaultSentences("creep", "crept", "crept") },
+            { base: "keep", past: "kept", participle: "kept", translation: "тримати", group: 3, exampleSentences: defaultSentences("keep", "kept", "kept") },
+            { base: "leave", past: "left", participle: "left", translation: "залишати", group: 3, exampleSentences: defaultSentences("leave", "left", "left") },
+            { base: "sleep", past: "slept", participle: "slept", translation: "спати", group: 3, exampleSentences: defaultSentences("sleep", "slept", "slept") },
+            { base: "sweep", past: "swept", participle: "swept", translation: "підмітати", group: 3, exampleSentences: defaultSentences("sweep", "swept", "swept") },
+            { base: "weep", past: "wept", participle: "wept", translation: "плакати", group: 3, exampleSentences: defaultSentences("weep", "wept", "wept") },
+            { base: "say", past: "said", participle: "said", translation: "говорити", group: 3, exampleSentences: defaultSentences("say", "said", "said") },
+            { base: "hear", past: "heard", participle: "heard", translation: "чути", group: 3, exampleSentences: defaultSentences("hear", "heard", "heard") },
+            { base: "seek", past: "sought", participle: "sought", translation: "шукати", group: 3, exampleSentences: defaultSentences("seek", "sought", "sought") },
+            { base: "lose", past: "lost", participle: "lost", translation: "губити", group: 3, exampleSentences: defaultSentences("lose", "lost", "lost") },
+            { base: "shoot", past: "shot", participle: "shot", translation: "стріляти", group: 3, exampleSentences: defaultSentences("shoot", "shot", "shot") },
+            { base: "sit", past: "sat", participle: "sat", translation: "сидіти", group: 3, exampleSentences: defaultSentences("sit", "sat", "sat") },
+            { base: "win", past: "won", participle: "won", translation: "перемагати", group: 3, exampleSentences: defaultSentences("win", "won", "won") },
+            { base: "bind", past: "bound", participle: "bound", translation: "зв'язувати", group: 3, exampleSentences: defaultSentences("bind", "bound", "bound") },
+            { base: "find", past: "found", participle: "found", translation: "знаходити", group: 3, exampleSentences: defaultSentences("find", "found", "found") },
 
-          <li>
-            <img
-              src="./images/camila-garcia.jpg"
-              alt="Camila Garcia - Marketing"
-              width="264"
-              height="260"
-            />
-            <h3>Camila Garcia</h3>
-            <p>Marketing</p>
-          </li>
+            // ====================================================================
+            // ГРУПА 4: A-B-B (ought/aught) - 10 слів
+            // ====================================================================
+            { base: "bring", past: "brought", participle: "brought", translation: "приносити", group: 4, exampleSentences: defaultSentences("bring", "brought", "brought") },
+            { base: "buy", past: "bought", participle: "bought", translation: "купувати", group: 4, exampleSentences: defaultSentences("buy", "bought", "bought") },
+            { base: "catch", past: "caught", participle: "caught", translation: "ловити", group: 4, exampleSentences: defaultSentences("catch", "caught", "caught") },
+            { base: "fight", past: "fought", participle: "fought", translation: "боротися", group: 4, exampleSentences: defaultSentences("fight", "fought", "fought") },
+            { base: "seek", past: "sought", participle: "sought", translation: "шукати", group: 4, exampleSentences: defaultSentences("seek", "sought", "sought") },
+            { base: "teach", past: "taught", participle: "taught", translation: "навчати", group: 4, exampleSentences: defaultSentences("teach", "taught", "taught") },
+            { base: "think", past: "thought", participle: "thought", translation: "думати", group: 4, exampleSentences: defaultSentences("think", "thought", "thought") },
+            { base: "work", past: "wrought", participle: "wrought", translation: "працювати (застар.)", group: 4, exampleSentences: defaultSentences("work", "wrought", "wrought") },
+            { base: "beseech", past: "besought", participle: "besought", translation: "благати", group: 4, exampleSentences: defaultSentences("beseech", "besought", "besought") },
+            { base: "freight", past: "fraught", participle: "fraught", translation: "навантажувати", group: 4, exampleSentences: defaultSentences("freight", "fraught", "fraught") },
 
-          <li>
-            <img
-              src="./images/daniel-wilson.jpg"
-              alt="Daniel Wilson - UI Designer"
-              width="264"
-              height="260"
-            />
-            <h3>Daniel Wilson</h3>
-            <p>UI Designer</p>
-          </li>
-        </ul>
-      </section>
-    </main>
+            // ====================================================================
+            // ГРУПА 5: A-B-C (i-a-u, "Рінг" група) - 15 слів
+            // ====================================================================
+            { base: "begin", past: "began", participle: "begun", translation: "починати", group: 5, exampleSentences: defaultSentences("begin", "began", "begun") },
+            { base: "drink", past: "drank", participle: "drunk", translation: "пити", group: 5, exampleSentences: defaultSentences("drink", "drank", "drunk") },
+            { base: "ring", past: "rang", participle: "rung", translation: "дзвонити", group: 5, exampleSentences: defaultSentences("ring", "rang", "rung") },
+            { base: "sing", past: "sang", participle: "sung", translation: "співати", group: 5, exampleSentences: defaultSentences("sing", "sang", "sung") },
+            { base: "sink", past: "sank", participle: "sunk", translation: "тонути", group: 5, exampleSentences: defaultSentences("sink", "sank", "sunk") },
+            { base: "swim", past: "swam", participle: "swum", translation: "плавати", group: 5, exampleSentences: defaultSentences("swim", "swam", "swum") },
+            { base: "stink", past: "stank", participle: "stunk", translation: "смердіти", group: 5, exampleSentences: defaultSentences("stink", "stank", "stunk") },
+            { base: "shrink", past: "shrank", participle: "shrunk", translation: "стискатися", group: 5, exampleSentences: defaultSentences("shrink", "shrank", "shrunk") },
+            { base: "spring", past: "sprang", participle: "sprung", translation: "стрибати", group: 5, exampleSentences: defaultSentences("spring", "sprang", "sprung") },
+            { base: "fling", past: "flung", participle: "flung", translation: "кидати", group: 5, exampleSentences: defaultSentences("fling", "flung", "flung") },
+            { base: "slink", past: "slunk", participle: "slunk", translation: "крастися", group: 5, exampleSentences: defaultSentences("slink", "slunk", "slunk") },
+            { base: "wring", past: "wrung", participle: "wrung", translation: "викручувати", group: 5, exampleSentences: defaultSentences("wring", "wrung", "wrung") },
+            { base: "dig", past: "dug", participle: "dug", translation: "копати", group: 5, exampleSentences: defaultSentences("dig", "dug", "dug") },
+            { base: "stick", past: "stuck", participle: "stuck", translation: "приклеювати", group: 5, exampleSentences: defaultSentences("stick", "stuck", "stuck") },
+            { base: "strike", past: "struck", participle: "struck", translation: "вдаряти", group: 5, exampleSentences: defaultSentences("strike", "struck", "struck") },
 
-    <footer>
-      <a href="./index.html">WebStudio</a>
-      <p>
-        Increase the flow of customers and sales for your business with digital
-        marketing & growth solutions.
-      </p>
-    </footer>
-  </body>
+            // ====================================================================
+            // ГРУПА 6: A-B-C (i-o-en, "Драйв" група) - 15 слів
+            // ====================================================================
+            { base: "drive", past: "drove", participle: "driven", translation: "водити", group: 6, exampleSentences: defaultSentences("drive", "drove", "driven") },
+            { base: "rise", past: "rose", participle: "risen", translation: "підійматися", group: 6, exampleSentences: defaultSentences("rise", "rose", "risen") },
+            { base: "write", past: "wrote", participle: "written", translation: "писати", group: 6, exampleSentences: defaultSentences("write", "wrote", "written") },
+            { base: "stride", past: "strode", participle: "stridden", translation: "крокувати", group: 6, exampleSentences: defaultSentences("stride", "strode", "stridden") },
+            { base: "strive", past: "strove", participle: "striven", translation: "прагнути", group: 6, exampleSentences: defaultSentences("strive", "strove", "striven") },
+            { base: "ride", past: "rode", participle: "ridden", translation: "їхати верхи", group: 6, exampleSentences: defaultSentences("ride", "rode", "ridden") },
+            { base: "bite", past: "bit", participle: "bitten", translation: "кусати", group: 6, exampleSentences: defaultSentences("bite", "bit", "bitten") },
+            { base: "hide", past: "hid", participle: "hidden", translation: "ховати", group: 6, exampleSentences: defaultSentences("hide", "hid", "hidden") },
+            { base: "chide", past: "chid", participle: "chidden", translation: "докоряти", group: 6, exampleSentences: defaultSentences("chide", "chid", "chidden") },
+            { base: "forbid", past: "forbade", participle: "forbidden", translation: "забороняти", group: 6, exampleSentences: defaultSentences("forbid", "forbade", "forbidden") },
+            { base: "give", past: "gave", participle: "given", translation: "давати", group: 6, exampleSentences: defaultSentences("give", "gave", "given") },
+            { base: "forgive", past: "forgave", participle: "forgiven", translation: "прощати", group: 6, exampleSentences: defaultSentences("forgive", "forgave", "forgiven") },
+            { base: "eat", past: "ate", participle: "eaten", translation: "їсти", group: 6, exampleSentences: defaultSentences("eat", "ate", "eaten") },
+            { base: "fall", past: "fell", participle: "fallen", translation: "падати", group: 6, exampleSentences: defaultSentences("fall", "fell", "fallen") },
+            { base: "see", past: "saw", participle: "seen", translation: "бачити", group: 6, exampleSentences: defaultSentences("see", "saw", "seen") },
+
+            // ====================================================================
+            // ГРУПА 7: A-B-C (e-o-en, "Спік" група) - 15 слів
+            // ====================================================================
+            { base: "break", past: "broke", participle: "broken", translation: "ламати", group: 7, exampleSentences: defaultSentences("break", "broke", "broken") },
+            { base: "choose", past: "chose", participle: "chosen", translation: "обирати", group: 7, exampleSentences: defaultSentences("choose", "chose", "chosen") },
+            { base: "freeze", past: "froze", participle: "frozen", translation: "замерзати", group: 7, exampleSentences: defaultSentences("freeze", "froze", "frozen") },
+            { base: "speak", past: "spoke", participle: "spoken", translation: "говорити", group: 7, exampleSentences: defaultSentences("speak", "spoke", "spoken") },
+            { base: "steal", past: "stole", participle: "stolen", translation: "красти", group: 7, exampleSentences: defaultSentences("steal", "stole", "stolen") },
+            { base: "swear", past: "swore", participle: "sworn", translation: "клястися", group: 7, exampleSentences: defaultSentences("swear", "swore", "sworn") },
+            { base: "tear", past: "tore", participle: "torn", translation: "рвати", group: 7, exampleSentences: defaultSentences("tear", "tore", "torn") },
+            { base: "wear", past: "wore", participle: "worn", translation: "носити", group: 7, exampleSentences: defaultSentences("wear", "wore", "worn") },
+            { base: "weave", past: "wove", participle: "woven", translation: "ткати", group: 7, exampleSentences: defaultSentences("weave", "wove", "woven") },
+            { base: "get", past: "got", participle: "gotten", translation: "отримувати (AmE)", group: 7, exampleSentences: defaultSentences("get", "got", "gotten") },
+            { base: "wake", past: "woke", participle: "woken", translation: "прокидатися", group: 7, exampleSentences: defaultSentences("wake", "woke", "woken") },
+            { base: "blow", past: "blew", participle: "blown", translation: "дути", group: 7, exampleSentences: defaultSentences("blow", "blew", "blown") },
+            { base: "grow", past: "grew", participle: "grown", translation: "рости", group: 7, exampleSentences: defaultSentences("grow", "grew", "grown") },
+            { base: "know", past: "knew", participle: "known", translation: "знати", group: 7, exampleSentences: defaultSentences("know", "knew", "known") },
+            { base: "throw", past: "threw", participle: "thrown", translation: "кидати", group: 7, exampleSentences: defaultSentences("throw", "threw", "thrown") },
+
+            // ====================================================================
+            // ГРУПА 8: A-B-C (aw/ow + ew/own) - 10 слів
+            // ====================================================================
+            { base: "draw", past: "drew", participle: "drawn", translation: "малювати", group: 8, exampleSentences: defaultSentences("draw", "drew", "drawn") },
+            { base: "fly", past: "flew", participle: "flown", translation: "літати", group: 8, exampleSentences: defaultSentences("fly", "flew", "flown") },
+            { base: "slay", past: "slew", participle: "slain", translation: "вбивати", group: 8, exampleSentences: defaultSentences("slay", "slew", "slain") },
+            { base: "show", past: "showed", participle: "shown", translation: "показувати", group: 8, exampleSentences: defaultSentences("show", "showed", "shown") },
+            { base: "sow", past: "sowed", participle: "sown", translation: "сіяти", group: 8, exampleSentences: defaultSentences("sow", "sowed", "sown") },
+            { base: "bear", past: "bore", participle: "born", translation: "народжувати", group: 8, exampleSentences: defaultSentences("bear", "bore", "born") },
+            { base: "forsake", past: "forsook", participle: "forsaken", translation: "покидати", group: 8, exampleSentences: defaultSentences("forsake", "forsook", "forsaken") },
+            { base: "lie", past: "lay", participle: "lain", translation: "лежати", group: 8, exampleSentences: defaultSentences("lie", "lay", "lain") },
+            { base: "take", past: "took", participle: "taken", translation: "брати", group: 8, exampleSentences: defaultSentences("take", "took", "taken") },
+            { base: "mistake", past: "mistook", participle: "mistaken", translation: "помилятися", group: 8, exampleSentences: defaultSentences("mistake", "mistook", "mistaken") },
+
+            // ====================================================================
+            // ГРУПА 9: A-B-A (Come/Run група) - 10 слів
+            // ====================================================================
+            { base: "come", past: "came", participle: "come", translation: "приходити", group: 9, exampleSentences: defaultSentences("come", "came", "come") },
+            { base: "become", past: "became", participle: "become", translation: "ставати", group: 9, exampleSentences: defaultSentences("become", "became", "become") },
+            { base: "run", past: "ran", participle: "run", translation: "бігти", group: 9, exampleSentences: defaultSentences("run", "ran", "run") },
+            { base: "overcome", past: "overcame", participle: "overcome", translation: "долати", group: 9, exampleSentences: defaultSentences("overcome", "overcame", "overcome") },
+            { base: "undergo", past: "underwent", participle: "undergone", translation: "зазнавати", group: 9, exampleSentences: defaultSentences("undergo", "underwent", "undergone") },
+            { base: "undo", past: "undid", participle: "undone", translation: "скасовувати", group: 9, exampleSentences: defaultSentences("undo", "undid", "undone") },
+            { base: "retake", past: "retook", participle: "retaken", translation: "перескладати", group: 9, exampleSentences: defaultSentences("retake", "retook", "retaken") },
+            { base: "withdraw", past: "withdrew", participle: "withdrawn", translation: "відкликати", group: 9, exampleSentences: defaultSentences("withdraw", "withdrew", "withdrawn") },
+            { base: "withstand", past: "withstood", participle: "withstood", translation: "витримувати", group: 9, exampleSentences: defaultSentences("withstand", "withstood", "withstood") },
+            { base: "go", past: "went", participle: "gone", translation: "йти (зміна кореня)", group: 9, exampleSentences: defaultSentences("go", "went", "gone") }, // Виняток
+
+            // ====================================================================
+            // ГРУПА 10: A-B-C (Vowel change) - 15 слів
+            // ====================================================================
+            { base: "forbid", past: "forbade", participle: "forbidden", translation: "забороняти", group: 10, exampleSentences: defaultSentences("forbid", "forbade", "forbidden") },
+            { base: "give", past: "gave", participle: "given", translation: "давати", group: 10, exampleSentences: defaultSentences("give", "gave", "given") },
+            { base: "stand", past: "stood", participle: "stood", translation: "стояти", group: 10, exampleSentences: defaultSentences("stand", "stood", "stood") },
+            { base: "understand", past: "understood", participle: "understood", translation: "розуміти", group: 10, exampleSentences: defaultSentences("understand", "understood", "understood") },
+            { base: "feed", past: "fed", participle: "fed", translation: "годувати", group: 10, exampleSentences: defaultSentences("feed", "fed", "fed") },
+            { base: "bleed", past: "bled", participle: "bled", translation: "кровоточити", group: 10, exampleSentences: defaultSentences("bleed", "bled", "bled") },
+            { base: "meet", past: "met", participle: "met", translation: "зустрічати", group: 10, exampleSentences: defaultSentences("meet", "met", "met") },
+            { base: "lead", past: "led", participle: "led", translation: "вести", group: 10, exampleSentences: defaultSentences("lead", "led", "led") },
+            { base: "hold", past: "held", participle: "held", translation: "тримати", group: 10, exampleSentences: defaultSentences("hold", "held", "held") },
+            { base: "sell", past: "sold", participle: "sold", translation: "продавати", group: 10, exampleSentences: defaultSentences("sell", "sold", "sold") },
+            { base: "tell", past: "told", participle: "told", translation: "розповідати", group: 10, exampleSentences: defaultSentences("tell", "told", "told") },
+            { base: "get", past: "got", participle: "got", translation: "отримувати (BrE)", group: 10, exampleSentences: defaultSentences("get", "got", "got") },
+            { base: "shine", past: "shone", participle: "shone", translation: "світити", group: 10, exampleSentences: defaultSentences("shine", "shone", "shone") },
+            { base: "stick", past: "stuck", participle: "stuck", translation: "приклеювати", group: 10, exampleSentences: defaultSentences("stick", "stuck", "stuck") },
+            { base: "swing", past: "swung", participle: "swung", translation: "гойдатися", group: 10, exampleSentences: defaultSentences("swing", "swung", "swung") },
+            
+            // ====================================================================
+            // ГРУПА 11: A-B-B (i -> u) - 10 слів
+            // ====================================================================
+            { base: "cling", past: "clung", participle: "clung", translation: "чіплятися", group: 11, exampleSentences: defaultSentences("cling", "clung", "clung") },
+            { base: "dig", past: "dug", participle: "dug", translation: "копати", group: 11, exampleSentences: defaultSentences("dig", "dug", "dug") },
+            { base: "flee", past: "fled", participle: "fled", translation: "тікати", group: 11, exampleSentences: defaultSentences("flee", "fled", "fled") },
+            { base: "hang", past: "hung", participle: "hung", translation: "вішати", group: 11, exampleSentences: defaultSentences("hang", "hung", "hung") },
+            { base: "sling", past: "slung", participle: "slung", translation: "перекидати через плече", group: 11, exampleSentences: defaultSentences("sling", "slung", "slung") },
+            { base: "spin", past: "spun", participle: "spun", translation: "крутити", group: 11, exampleSentences: defaultSentences("spin", "spun", "spun") },
+            { base: "sting", past: "stung", participle: "stung", translation: "жалити", group: 11, exampleSentences: defaultSentences("sting", "stung", "stung") },
+            { base: "strike", past: "struck", participle: "struck", translation: "вдаряти", group: 11, exampleSentences: defaultSentences("strike", "struck", "struck") },
+            { base: "string", past: "strung", participle: "strung", translation: "нанизувати", group: 11, exampleSentences: defaultSentences("string", "strung", "strung") },
+            { base: "wring", past: "wrung", participle: "wrung", translation: "викручувати", group: 11, exampleSentences: defaultSentences("wring", "wrung", "wrung") },
+
+            // ====================================================================
+            // ГРУПА 12: A-B-C (Vowel change) - 10 слів
+            // ====================================================================
+            { base: "lie", past: "lay", participle: "lain", translation: "лежати", group: 12, exampleSentences: defaultSentences("lie", "lay", "lain") },
+            { base: "lay", past: "laid", participle: "laid", translation: "класти, накривати", group: 12, exampleSentences: defaultSentences("lay", "laid", "laid") },
+            { base: "pay", past: "paid", participle: "paid", translation: "платити", group: 12, exampleSentences: defaultSentences("pay", "paid", "paid") },
+            { base: "awake", past: "awoke", participle: "awoken", translation: "будити", group: 12, exampleSentences: defaultSentences("awake", "awoke", "awoken") },
+            { base: "hide", past: "hid", participle: "hidden", translation: "ховати", group: 12, exampleSentences: defaultSentences("hide", "hid", "hidden") },
+            { base: "forgive", past: "forgave", participle: "forgiven", translation: "прощати", group: 12, exampleSentences: defaultSentences("forgive", "forgave", "forgiven") },
+            { base: "forsake", past: "forsook", participle: "forsaken", translation: "покидати", group: 12, exampleSentences: defaultSentences("forsake", "forsook", "forsaken") },
+            { base: "prove", past: "proved", participle: "proven", translation: "доводити", group: 12, exampleSentences: defaultSentences("prove", "proved", "proven") },
+            { base: "shear", past: "shore", participle: "shorn", translation: "стригти", group: 12, exampleSentences: defaultSentences("shear", "shore", "shorn") },
+            { base: "slink", past: "slunk", participle: "slunk", "translation": "крастися", group: 12, exampleSentences: defaultSentences("slink", "slunk", "slunk") },
+
+            // ====================================================================
+            // ГРУПА 13: A-B-C (Комплексна зміна) - 10 слів
+            // ====================================================================
+            { base: "fall", past: "fell", participle: "fallen", translation: "падати", group: 13, exampleSentences: defaultSentences("fall", "fell", "fallen") },
+            { base: "forget", past: "forgot", participle: "forgotten", translation: "забувати", group: 13, exampleSentences: defaultSentences("forget", "forgot", "forgotten") },
+            { base: "forgive", past: "forgave", participle: "forgiven", translation: "прощати", group: 13, exampleSentences: defaultSentences("forgive", "forgave", "forgiven") },
+            { base: "get", past: "got", participle: "gotten", translation: "отримувати (AmE)", group: 13, exampleSentences: defaultSentences("get", "got", "gotten") },
+            { base: "tread", past: "trod", participle: "trodden", translation: "ступати", group: 13, exampleSentences: defaultSentences("tread", "trod", "trodden") },
+            { base: "undo", past: "undid", participle: "undone", translation: "скасовувати", group: 13, exampleSentences: defaultSentences("undo", "undid", "undone") },
+            { base: "upset", past: "upset", participle: "upset", translation: "засмучувати", group: 13, exampleSentences: defaultSentences("upset", "upset", "upset") },
+            { base: "win", past: "won", participle: "won", translation: "перемагати", group: 13, exampleSentences: defaultSentences("win", "won", "won") },
+            { base: "sell", past: "sold", participle: "sold", translation: "продавати", group: 13, exampleSentences: defaultSentences("sell", "sold", "sold") },
+            { base: "tell", past: "told", participle: "told", translation: "розповідати", group: 13, exampleSentences: defaultSentences("tell", "told", "told") },
+
+            // ====================================================================
+            // ГРУПА 14: Висока частотність / Повні винятки - ~20 слів
+            // ====================================================================
+            { base: "be", past: "was/were", participle: "been", translation: "бути", group: 14, exampleSentences: [{ uk: "Я є.", en: "I am.", form: "base" }, { uk: "Я був там.", en: "I was there.", form: "past" }, { uk: "Я там був.", en: "I have been there.", form: "participle" }] },
+            { base: "do", past: "did", participle: "done", translation: "робити", group: 14, exampleSentences: defaultSentences("do", "did", "done") },
+            { base: "go", past: "went", participle: "gone", translation: "йти", group: 14, exampleSentences: defaultSentences("go", "went", "gone") },
+            { base: "have", past: "had", participle: "had", translation: "мати", group: 14, exampleSentences: defaultSentences("have", "had", "had") },
+            { base: "make", past: "made", participle: "made", translation: "робити/виготовляти", group: 14, exampleSentences: defaultSentences("make", "made", "made") },
+            { base: "say", past: "said", participle: "said", translation: "казати", group: 14, exampleSentences: defaultSentences("say", "said", "said") },
+            { base: "take", past: "took", participle: "taken", translation: "брати", group: 14, exampleSentences: defaultSentences("take", "took", "taken") },
+            { base: "come", past: "came", participle: "come", translation: "приходити", group: 14, exampleSentences: defaultSentences("come", "came", "come") },
+            { base: "see", past: "saw", participle: "seen", translation: "бачити", group: 14, exampleSentences: defaultSentences("see", "saw", "seen") },
+            { base: "tell", past: "told", participle: "told", translation: "розповідати", group: 14, exampleSentences: defaultSentences("tell", "told", "told") },
+            { base: "find", past: "found", participle: "found", translation: "знаходити", group: 14, exampleSentences: defaultSentences("find", "found", "found") },
+            { base: "give", past: "gave", participle: "given", translation: "давати", group: 14, exampleSentences: defaultSentences("give", "gave", "given") },
+            { base: "become", past: "became", participle: "become", translation: "ставати", group: 14, exampleSentences: defaultSentences("become", "became", "become") },
+            { base: "know", past: "knew", participle: "known", translation: "знати", group: 14, exampleSentences: defaultSentences("know", "knew", "known") },
+            { base: "get", past: "got", participle: "gotten", translation: "отримувати", group: 14, exampleSentences: defaultSentences("get", "got", "gotten") },
+            { base: "think", past: "thought", participle: "thought", translation: "думати", group: 14, exampleSentences: defaultSentences("think", "thought", "thought") },
+            { base: "bring", past: "brought", participle: "brought", translation: "приносити", group: 14, exampleSentences: defaultSentences("bring", "brought", "brought") },
+            { base: "write", past: "wrote", participle: "written", translation: "писати", group: 14, exampleSentences: defaultSentences("write", "wrote", "written") },
+            { base: "read", past: "read", participle: "read", translation: "читати (вимова: /red/)", group: 14, exampleSentences: defaultSentences("read", "read", "read") },
+            { base: "send", past: "sent", participle: "sent", translation: "надсилати", group: 14, exampleSentences: defaultSentences("send", "sent", "sent") },
+        ];
+        
+        // --- TTS УТИЛІТИ (КОНВЕРТАЦІЯ PCM -> WAV) ---
+        const base64ToArrayBuffer = (base64) => {
+            const binaryString = atob(base64);
+            const len = binaryString.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            return bytes.buffer;
+        };
+
+        const writeString = (view, offset, string) => {
+            for (let i = 0; i < string.length; i++) {
+                view.setUint8(offset + i, string.charCodeAt(i));
+            }
+        };
+
+        const pcmToWav = (pcm16, sampleRate) => {
+            const buffer = new ArrayBuffer(44 + pcm16.length * 2);
+            const view = new DataView(buffer);
+            
+            // RIFF chunk descriptor
+            writeString(view, 0, 'RIFF'); 
+            view.setUint32(4, 36 + pcm16.length * 2, true); 
+            writeString(view, 8, 'WAVE'); 
+            
+            // fmt sub-chunk
+            writeString(view, 12, 'fmt '); 
+            view.setUint32(16, 16, true); 
+            view.setUint16(20, 1, true); 
+            view.setUint16(22, 1, true); 
+            view.setUint32(24, sampleRate, true); 
+            view.setUint32(28, sampleRate * 2, true); 
+            view.setUint16(32, 2, true); 
+            view.setUint16(34, 16, true); 
+            
+            // data sub-chunk
+            writeString(view, 36, 'data'); 
+            view.setUint32(40, pcm16.length * 2, true); 
+            
+            // Write PCM data
+            let offset = 44;
+            for (let i = 0; i < pcm16.length; i++) {
+                view.setInt16(offset, pcm16[i], true);
+                offset += 2;
+            }
+
+            return new Blob([view], { type: 'audio/wav' });
+        };
+        
+        const speak = async (text) => {
+            const voiceName = "Kore"; 
+            const payload = {
+                contents: [{
+                    parts: [{ text: text }]
+                }],
+                generationConfig: {
+                    responseModalities: ["AUDIO"],
+                    speechConfig: {
+                        voiceConfig: {
+                            prebuiltVoiceConfig: { voiceName: voiceName }
+                        }
+                    }
+                },
+                model: "gemini-2.5-flash-preview-tts"
+            };
+            const apiKey = "";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`;
+
+            // Проста анімація кнопки під час завантаження
+            const speakerIcon = document.getElementById('speakerIcon');
+            if (speakerIcon) {
+                speakerIcon.classList.remove('text-indigo-600', 'hover:text-indigo-800');
+                speakerIcon.classList.add('animate-pulse', 'text-gray-500');
+            }
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+                const result = await response.json();
+                const part = result?.candidates?.[0]?.content?.parts?.[0];
+                const audioData = part?.inlineData?.data;
+                const mimeType = part?.inlineData?.mimeType;
+
+                if (audioData && mimeType && mimeType.startsWith("audio/")) {
+                    const sampleRateMatch = mimeType.match(/rate=(\d+)/);
+                    const sampleRate = sampleRateMatch ? parseInt(sampleRateMatch[1], 10) : 16000;
+                    
+                    const pcmData = base64ToArrayBuffer(audioData);
+                    const pcm16 = new Int16Array(pcmData);
+                    
+                    const wavBlob = pcmToWav(pcm16, sampleRate);
+                    const audioUrl = URL.createObjectURL(wavBlob);
+                    
+                    const audio = new Audio(audioUrl);
+                    audio.play();
+                } else {
+                    console.error("Audio data is missing or malformed.", result);
+                    alert("Помилка: Не вдалося згенерувати аудіо.");
+                }
+            } catch (error) {
+                console.error("TTS API Call failed:", error);
+                // Тиха помилка, щоб не дратувати користувача
+            } finally {
+                // Відновлюємо іконку
+                if (speakerIcon) {
+                    speakerIcon.classList.remove('animate-pulse', 'text-gray-500');
+                    speakerIcon.classList.add('text-indigo-600', 'hover:text-indigo-800');
+                }
+            }
+        };
+
+        // --- ЛОГІКА НАВІГАЦІЇ ---
+
+        // Функція для обробки натискання кнопки "Назад"
+        const handleBack = () => {
+            if (currentMode === 'study' || currentMode === 'drill' || currentMode === 'test') {
+                // З режиму (вивчення/дрил/тест) назад до меню вибору режиму для поточного блоку
+                selectGroup(currentGroupIndex); 
+            } else if (currentMode === 'selectGroup') { 
+                // З меню вибору режиму назад до головної сторінки
+                renderHome();
+            }
+        };
+
+        const updateBackButton = (text, isVisible) => {
+            backBtn.textContent = text;
+            if (isVisible) {
+                backBtn.classList.remove('hidden');
+            } else {
+                backBtn.classList.add('hidden');
+            }
+        }
+        
+        // ----------------------------------------------------
+        // 1. ГОЛОВНА СТОРІНКА (ВИБІР ГРУПИ)
+        // ----------------------------------------------------
+        const getGroupName = (group) => {
+            switch(group) {
+                case 1: return "A-A-A (Форми не змінюються)";
+                case 2: return "A-B-B (-D на -T або -L на -LT)";
+                case 3: return "A-B-B (Закінчення на -T)";
+                case 4: return "A-B-B (ought/aught)";
+                case 5: return "A-B-C (i-a-u, 'Рінг' група)";
+                case 6: return "A-B-C (i-o-en, 'Драйв' група)";
+                case 7: return "A-B-C (e-o-en, 'Спік' група)";
+                case 8: return "A-B-C (aw/ow + ew/own)";
+                case 9: return "A-B-A (Come/Run група)";
+                case 10: return "A-B-B/C (Зміна кореневої голосної)";
+                case 11: return "A-B-B (i -> u, 'Чіпляння')";
+                case 12: return "A-B-C (Комплексна зміна)";
+                case 13: return "A-B-C (Інші складні)";
+                case 14: return "Висока частотність / Повні винятки";
+                default: return "Інші";
+            }
+        }
+
+        const renderHome = () => {
+            currentMode = 'home';
+            updateBackButton("← На головну", false);
+            mainTitle.textContent = "Виберіть блок для вивчення (14 блоків)";
+            
+            let groupBlocksHtml = '';
+            const maxGroup = 14; 
+            
+            for (let i = 1; i <= maxGroup; i++) {
+                const count = verbs.filter(v => v.group === i).length;
+                groupBlocksHtml += `
+                    <div class="p-4 bg-indigo-50 border border-indigo-200 rounded-lg shadow-md cursor-pointer hover:bg-indigo-100 transition duration-150"
+                         onclick="selectGroup(${i})">
+                        <h3 class="text-xl font-semibold text-indigo-700">Блок ${i}</h3>
+                        <p class="text-sm text-gray-600">${count} дієслів (${getGroupName(i)})</p>
+                    </div>
+                `;
+            }
+
+            content.innerHTML = `
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                    ${groupBlocksHtml}
+                </div>
+                
+                <p class="text-center text-sm text-gray-500">Всього ${verbs.length} дієслів у 14 блоках.</p>
+            `;
+        };
+        
+        // ----------------------------------------------------
+        // 2. МЕНЮ БЛОКУ (ВИБІР РЕЖИМУ)
+        // ----------------------------------------------------
+        const selectGroup = (groupId) => {
+            currentMode = 'selectGroup';
+            currentGroupIndex = groupId;
+            currentGroupData = verbs.filter(v => v.group === groupId);
+
+            updateBackButton("← На головну", true); 
+            mainTitle.textContent = `Блок ${groupId}: Виберіть режим`;
+
+            content.innerHTML = `
+                <h3 class="text-2xl font-semibold text-gray-700 mb-4">Обрана група: ${getGroupName(groupId)}</h3>
+                <p class="text-md text-gray-600 mb-6">Всього слів у блоці: <span class="font-bold text-indigo-600">${currentGroupData.length}</span></p>
+                <div class="space-y-4">
+                    <button class="w-full py-3 px-4 bg-emerald-500 text-white font-semibold rounded-lg hover:bg-emerald-600 transition duration-200"
+                        onclick="renderStudyMode()">
+                        1. Перегляд та прослуховування слів (Режим вивчення)
+                    </button>
+                    <button class="w-full py-3 px-4 bg-yellow-500 text-white font-semibold rounded-lg hover:bg-yellow-600 transition duration-200"
+                        onclick="renderDrillMode()">
+                        2. Режим заучування (Введи 3 форми)
+                    </button>
+                    <button class="w-full py-3 px-4 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition duration-200"
+                        onclick="renderTestMode()">
+                        3. Режим тестування (Речення з пропуском)
+                    </button>
+                </div>
+            `;
+        };
+
+        // ----------------------------------------------------
+        // 3. РЕЖИМ ВИВЧЕННЯ (ТАБЛИЦЯ + TTS)
+        // ----------------------------------------------------
+        const renderStudyMode = () => {
+            currentMode = 'study';
+            updateBackButton("← До меню блоку", true); 
+            mainTitle.textContent = `Вивчення Блоку ${currentGroupIndex} (${currentGroupData.length} слів)`;
+
+            const tableRows = currentGroupData.map(v => `
+                <tr class="border-b hover:bg-gray-50">
+                    <td class="px-4 py-3 text-sm font-medium text-gray-900">${v.translation}</td>
+                    <td class="px-4 py-3 font-mono text-sm">${v.base}</td>
+                    <td class="px-4 py-3 font-mono text-sm">${v.past}</td>
+                    <td class="px-4 py-3 font-mono text-sm">${v.participle}</td>
+                    <td class="px-4 py-3">
+                        <button class="text-indigo-600 hover:text-indigo-800 transition duration-150"
+                            onclick="speak('${v.base}, ${v.past}, and ${v.participle}')">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" id="speakerIcon">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.121-7.778a8 8 0 010 11.314m-12.879-11.314a8 8 0 0111.314 0M11 5v14m-3-7h6l-3-3m0 6l3-3"/>
+                            </svg>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+
+            content.innerHTML = `
+                <div class="overflow-x-auto shadow-lg rounded-lg border">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-indigo-100">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Укр. переклад</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Base (V1)</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Past (V2)</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Participle (V3)</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Вимова</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            ${tableRows}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        };
+
+        // ----------------------------------------------------
+        // 4. РЕЖИМ ЗАУЧУВАННЯ (ДРИЛ)
+        // ----------------------------------------------------
+        const renderDrillMode = () => {
+            currentMode = 'drill';
+            updateBackButton("← До меню блоку", true); 
+            mainTitle.textContent = `Заучування Блоку ${currentGroupIndex}`;
+            currentTaskIndex = 0;
+            currentGroupData.sort(() => Math.random() - 0.5); 
+            generateDrillTask();
+        };
+
+        const generateDrillTask = () => {
+            if (currentTaskIndex >= currentGroupData.length) {
+                content.innerHTML = `<div class="p-6 text-center text-xl font-semibold text-green-700">Вітаємо! Всі слова вивчені.</div>`;
+                return;
+            }
+            
+            const verb = currentGroupData[currentTaskIndex];
+
+            content.innerHTML = `
+                <div class="p-6 bg-yellow-50 rounded-xl shadow-inner text-center">
+                    <p class="text-3xl font-bold text-yellow-700 mb-2">${verb.translation}</p>
+                    <p class="text-sm text-gray-500">Введіть три форми дієслова англійською. (${currentTaskIndex + 1}/${currentGroupData.length})</p>
+                </div>
+                
+                <div id="drillInputs" class="space-y-3">
+                    <input type="text" id="inputBase" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-yellow-500 focus:border-yellow-500" placeholder="Base Form (V1)">
+                    <input type="text" id="inputPast" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-yellow-500 focus:border-yellow-500" placeholder="Past Simple (V2)">
+                    <input type="text" id="inputParticiple" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-yellow-500 focus:border-yellow-500" placeholder="Past Participle (V3)">
+                </div>
+
+                <div id="drillFeedback" class="text-center font-bold pt-2"></div>
+
+                <button id="drillCheckBtn" class="w-full py-3 px-4 bg-yellow-500 text-white font-semibold rounded-lg hover:bg-yellow-600 transition duration-200 shadow-md">
+                    Перевірити форми
+                </button>
+            `;
+            
+            const checkBtn = document.getElementById("drillCheckBtn");
+            
+            const drillCheckHandler = () => {
+                const base = document.getElementById("inputBase");
+                const past = document.getElementById("inputPast");
+                const participle = document.getElementById("inputParticiple");
+                const feedback = document.getElementById("drillFeedback");
+
+                let allCorrect = true;
+                let feedbackHtml = '';
+
+                // Перевірка V1
+                if (!checkInput(base.value, verb.base, verb)) {
+                    allCorrect = false;
+                    feedbackHtml += `<p class="text-red-600">❌ V1: Невірно! Правильно: <span class="text-yellow-700">${verb.base}</span></p>`;
+                    base.classList.add('border-red-500', 'border-2');
+                } else {
+                    base.classList.add('border-green-500', 'border-2');
+                }
+
+                // Перевірка V2
+                if (!checkInput(past.value, verb.past, verb)) {
+                    allCorrect = false;
+                    feedbackHtml += `<p class="text-red-600">❌ V2: Невірно! Правильно: <span class="text-yellow-700">${verb.past}</span></p>`;
+                    past.classList.add('border-red-500', 'border-2');
+                } else {
+                    past.classList.add('border-green-500', 'border-2');
+                }
+                
+                // Перевірка V3
+                if (!checkInput(participle.value, verb.participle, verb)) {
+                    allCorrect = false;
+                    feedbackHtml += `<p class="text-red-600">❌ V3: Невірно! Правильно: <span class="text-yellow-700">${verb.participle}</span></p>`;
+                    participle.classList.add('border-red-500', 'border-2');
+                } else {
+                    participle.classList.add('border-green-500', 'border-2');
+                }
+
+                if (allCorrect) {
+                    feedback.innerHTML = `<p class="text-green-600 text-xl">✅ Чудово! Всі форми вірні.</p>`;
+                    base.disabled = true; past.disabled = true; participle.disabled = true;
+                    checkBtn.textContent = "Наступне слово →";
+                    checkBtn.onclick = () => { currentTaskIndex++; generateDrillTask(); };
+                } else {
+                    feedback.innerHTML = feedbackHtml;
+                }
+            };
+
+            // Обробка спеціальних випадків (наприклад, be - was/were)
+            const checkInput = (input, correctForms, verb) => {
+                const cleanedInput = input.trim().toLowerCase();
+                if (verb.base === "be" && correctForms.includes('/')) {
+                    const forms = correctForms.split('/');
+                    return forms.some(form => cleanedInput === form.trim().toLowerCase());
+                }
+                return cleanedInput === correctForms.toLowerCase();
+            };
+            
+            checkBtn.onclick = drillCheckHandler;
+            document.getElementById("inputParticiple").addEventListener('keyup', (event) => {
+                if (event.key === 'Enter') {
+                    drillCheckHandler();
+                }
+            });
+            document.getElementById("inputBase").focus();
+        };
+
+
+        // ----------------------------------------------------
+        // 5. РЕЖИМ ТЕСТУВАННЯ (РЕЧЕННЯ)
+        // ----------------------------------------------------
+        const initializeTestSentences = () => {
+            allSentences = [];
+            currentGroupData.forEach(verb => {
+                // Додаємо 3 речення для кожного дієслова
+                verb.exampleSentences.forEach(sentence => {
+                    allSentences.push({
+                        ...sentence,
+                        verbObject: verb
+                    });
+                });
+            });
+            // Перемішуємо речення
+            for (let i = allSentences.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [allSentences[i], allSentences[j]] = [allSentences[j], allSentences[i]];
+            }
+            currentTaskIndex = 0;
+            correctAnswers = 0; 
+        };
+
+        const renderTestMode = () => {
+            currentMode = 'test';
+            updateBackButton("← До меню блоку", true); 
+            mainTitle.textContent = `Тестування Блоку ${currentGroupIndex}`;
+            initializeTestSentences();
+            generateTestTask();
+        };
+
+        const generateTestTask = () => {
+            if (allSentences.length === 0 || currentTaskIndex >= allSentences.length) {
+                content.innerHTML = `
+                    <div class="p-6 text-center text-xl font-semibold text-gray-700">
+                        Тест завершено! <br>
+                        <span class="text-green-600">Ваш результат: ${correctAnswers} / ${allSentences.length}</span>
+                    </div>`;
+                return;
+            }
+
+            const currentTask = allSentences[currentTaskIndex];
+            const verb = currentTask.verbObject;
+            const correctWord = verb[currentTask.form]; 
+            
+            // Обробка спеціальних випадків (наприклад, was/were)
+            const possibleCorrectWords = correctWord.includes('/') ? correctWord.split('/').map(w => w.trim().toLowerCase()) : [correctWord.toLowerCase()];
+            
+            // Створюємо паттерн для заміни
+            let enSentenceWithGap = currentTask.en;
+            let replaced = false;
+
+            // Спроба замінити, шукаючи одне з можливих правильних слів
+            for (const word of currentTask.en.split(/\s+/)) {
+                // Чисте слово без пунктуації для порівняння
+                const cleanWord = word.replace(/[^a-z]/gi, '').toLowerCase();
+
+                if (possibleCorrectWords.includes(cleanWord)) {
+                    // Знайти оригінальне слово в реченні, щоб зберегти пунктуацію
+                    const regex = new RegExp(`\\b${cleanWord}\\b`, 'i');
+                    enSentenceWithGap = enSentenceWithGap.replace(regex, '_____');
+                    replaced = true;
+                    break;
+                }
+            }
+
+            // Якщо не вдалося знайти і замінити (рідкісні випадки)
+            if (!replaced) {
+                enSentenceWithGap = currentTask.en.replace(new RegExp(correctWord, 'i'), '_____');
+            }
+            
+            content.innerHTML = `
+                <div id="testArea">
+                    
+                    <!-- Тільки українське речення без підказок -->
+                    <div class="p-4 bg-gray-50 rounded-lg shadow-inner">
+                        <p class="text-lg italic text-gray-900">"${currentTask.uk}"</p>
+                    </div>
+
+                    <div class="p-4 bg-white rounded-lg border border-indigo-200 mt-4">
+                        <p class="text-md font-semibold text-gray-700 mb-2">Англійською (заповніть пропуск):</p>
+                        <p class="text-xl font-mono text-gray-800 mb-4">${enSentenceWithGap} <span class="text-sm text-gray-400"> (Завдання ${currentTaskIndex + 1}/${allSentences.length})</span></p>
+                        <input type="text" id="inpEng" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition duration-150" placeholder="Введіть пропущене слово" />
+                    </div>
+                    
+                    <button id="testCheckBtn" class="w-full mt-4 py-3 px-4 bg-emerald-500 text-white font-semibold rounded-lg hover:bg-emerald-600 transition duration-200 shadow-md">
+                        Перевірити
+                    </button>
+
+                    <div id="feedback" class="text-center font-bold pt-2"></div>
+                </div>
+                <div class="mt-4 text-sm text-gray-600 text-center">
+                    <p>Поточний рахунок: <span id="correctCount" class="font-bold text-green-600">${correctAnswers}</span> / ${allSentences.length}</p>
+                </div>
+            `;
+            
+            // --- ДОДАВАННЯ ЛОГІКИ ПЕРЕВІРКИ ---
+            const checkBtn = document.getElementById("testCheckBtn");
+            const inputField = document.getElementById("inpEng");
+            
+            const checkHandler = () => {
+                const inpEng = inputField.value.trim().toLowerCase();
+                const feedback = document.getElementById("feedback");
+                
+                checkBtn.disabled = true;
+                inputField.disabled = true;
+
+                // Перевірка на співпадіння з будь-якою можливою коректною формою
+                const isCorrect = possibleCorrectWords.includes(inpEng);
+
+                if (isCorrect) {
+                    // ✅ Правильна відповідь
+                    feedback.innerHTML = `<span class="text-green-600 text-lg">✅ Вірно! Слово: ${correctWord}</span>`;
+                    correctAnswers++;
+                    document.getElementById("correctCount").textContent = correctAnswers;
+                    inputField.classList.add('border-green-500', 'border-2');
+
+                } else {
+                    // ❌ Неправильна відповідь: показуємо правильну і рухаємося далі
+                    feedback.innerHTML = `
+                        <span class="text-red-600 text-lg">❌ Невірно.</span> 
+                        <br>
+                        <span class="text-indigo-700 font-extrabold text-xl">Правильно: ${correctWord}</span>
+                    `;
+                    inputField.classList.add('border-red-500', 'border-2');
+                }
+                
+                // Спільна логіка для переходу до наступного завдання
+                checkBtn.textContent = "Наступне завдання →";
+                checkBtn.onclick = () => { currentTaskIndex++; generateTestTask(); };
+                checkBtn.disabled = false; // Знову активуємо для кнопки "Наступне"
+                checkBtn.classList.remove('bg-emerald-500', 'hover:bg-emerald-600');
+                checkBtn.classList.add('bg-indigo-600', 'hover:bg-indigo-700');
+            };
+
+            // Обробники подій
+            checkBtn.onclick = checkHandler;
+            inputField.addEventListener('keyup', (event) => {
+                if (event.key === 'Enter' && checkBtn.textContent === 'Перевірити') {
+                    checkHandler();
+                }
+            });
+            
+            inputField.focus();
+        };
+
+        // Налаштування глобального обробника кнопки "Назад"
+        backBtn.onclick = handleBack;
+        
+        // Запуск при завантаженні сторінки
+        window.onload = renderHome;
+
+    </script>
+</body>
 </html>
