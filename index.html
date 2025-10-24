@@ -1,832 +1,2460 @@
 <!DOCTYPE html>
 <html lang="uk">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Комплекс Іррегулярних Дієслів</title>
-    <!-- Використовуємо Tailwind CSS для стилізації -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f4f7f9;
-        }
-        /* Стиль для відключення кнопки */
-        .btn-disabled {
-            cursor: not-allowed;
-            opacity: 0.6;
-            background-color: #9ca3af !important;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Комплекс Іррегулярних Дієслів</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+body { font-family: 'Inter', sans-serif; background-color: #f4f7f9; }
+.btn-disabled { cursor: not-allowed; opacity: 0.6; background-color: #9ca3af !important; }
+input, button { touch-action: manipulation; }
+table { width: 100%; border-collapse: collapse; }
+th, td { padding: 0.5rem; }
+@media (max-width: 640px) {
+  table, thead, tbody, th, td, tr { display: block; }
+  thead tr { display: none; }
+  td { border: none; position: relative; padding-left: 50%; }
+  td:before {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 45%;
+    padding-left: 0.5rem;
+    white-space: nowrap;
+    color: #6b7280;
+    font-weight: 600;
+  }
+  td:nth-of-type(1):before { content: "Переклад"; }
+  td:nth-of-type(2):before { content: "V1"; }
+  td:nth-of-type(3):before { content: "V2"; }
+  td:nth-of-type(4):before { content: "V3"; }
+  td:nth-of-type(5):before { content: "Озвучення"; }
+}
+</style>
 </head>
 <body class="p-4 md:p-8 min-h-screen flex items-start justify-center">
+<div id="app" class="w-full max-w-4xl bg-white p-4 md:p-6 rounded-xl shadow-2xl border border-gray-100">
+  <h1 id="mainTitle" class="text-2xl md:text-3xl font-bold text-center mb-4 text-gray-800">Комплекс Дієслів</h1>
+  <div id="content" class="space-y-6"><div class="text-center text-gray-500">Завантаження інтерфейсу...</div></div>
+  <button id="backBtn" class="hidden w-full mt-6 py-3 px-4 bg-gray-300 text-gray-800 font-semibold rounded-lg hover:bg-gray-400 transition duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"></button>
+</div>
 
-    <div id="app" class="w-full max-w-4xl bg-white p-6 rounded-xl shadow-2xl border border-gray-100">
-        <h1 id="mainTitle" class="text-3xl font-bold text-center mb-6 text-gray-800">Комплекс Дієслів</h1>
-        
-        <div id="content" class="space-y-6">
-            <!-- Динамічний контент буде тут -->
-            <div class="text-center text-gray-500">Завантаження інтерфейсу...</div>
-        </div>
-        
-        <button id="backBtn" class="hidden w-full mt-6 py-2 px-4 bg-gray-300 text-gray-800 font-semibold rounded-lg hover:bg-gray-400 transition duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2">
-            <!-- Текст кнопки буде встановлюватися динамічно -->
-        </button>
-        
-    </div>
+<script>
+// ===== ГЛОБАЛЬНИЙ СТАН =====
+let correctAnswers = 0, allSentences = [], currentGroupData = [], currentTaskIndex = 0, currentMode = 'home', currentGroupIndex = null;
+const content = document.getElementById("content"), backBtn = document.getElementById("backBtn"), mainTitle = document.getElementById("mainTitle");
 
-    <script>
-        // ГЛОБАЛЬНИЙ СТАН
-        let correctAnswers = 0;
-        let allSentences = []; // Використовується лише для режиму тестування
-        let currentGroupData = []; // Дієслова поточної обраної групи
-        let currentTaskIndex = 0;
-        let currentMode = 'home'; // 'home', 'selectGroup', 'study', 'drill', 'test'
-        let currentGroupIndex = null;
-        
-        // Посилання на DOM-елементи
-        const content = document.getElementById("content");
-        const backBtn = document.getElementById("backBtn");
-        const mainTitle = document.getElementById("mainTitle");
-        
-        // --- ДАНІ ДІЄСЛІВ (14 БЛОКІВ, БЛИЗЬКО 190 СЛІВ) ---
-        // Використовуємо мінімальну кількість прикладів для нових слів для зменшення розміру коду
-        const defaultSentences = (base, past, participle) => [
-            { uk: `Я часто ${base} щось.`, en: `I often ${base} something.`, form: "base" }, 
-            { uk: `Я ${past} це вчора.`, en: `I ${past} it yesterday.`, form: "past" },
-            { uk: `Це було ${participle} давно.`, en: `It has been ${participle} long ago.`, form: "participle" }
-        ];
-
-        const verbs = [
+// ===== ДАНІ =====
+const verbs = [
             // ====================================================================
             // ГРУПА 1: A-A-A (Усі три форми однакові) - 15 слів
             // ====================================================================
-            { base: "bet", past: "bet", participle: "bet", translation: "закладатись", group: 1, exampleSentences: defaultSentences("bet", "bet", "bet") },
-            { base: "burst", past: "burst", participle: "burst", translation: "вибухати", group: 1, exampleSentences: defaultSentences("burst", "burst", "burst") },
-            { base: "cast", past: "cast", participle: "cast", translation: "кидати", group: 1, exampleSentences: defaultSentences("cast", "cast", "cast") },
-            { base: "cost", past: "cost", participle: "cost", translation: "коштувати", group: 1, exampleSentences: defaultSentences("cost", "cost", "cost") },
-            { base: "cut", past: "cut", participle: "cut", translation: "різати", group: 1, exampleSentences: defaultSentences("cut", "cut", "cut") },
-            { base: "hit", past: "hit", participle: "hit", translation: "вдаряти", group: 1, exampleSentences: defaultSentences("hit", "hit", "hit") },
-            { base: "hurt", past: "hurt", participle: "hurt", translation: "боліти", group: 1, exampleSentences: defaultSentences("hurt", "hurt", "hurt") },
-            { base: "knit", past: "knit", participle: "knit", translation: "в'язати", group: 1, exampleSentences: defaultSentences("knit", "knit", "knit") },
-            { base: "let", past: "let", participle: "let", translation: "дозволяти", group: 1, exampleSentences: defaultSentences("let", "let", "let") },
-            { base: "put", past: "put", participle: "put", translation: "класти", group: 1, exampleSentences: defaultSentences("put", "put", "put") },
-            { base: "read", past: "read", participle: "read", translation: "читати (вимова: /red/)", group: 1, exampleSentences: defaultSentences("read", "read", "read") },
-            { base: "rid", past: "rid", participle: "rid", translation: "позбавлятися", group: 1, exampleSentences: defaultSentences("rid", "rid", "rid") },
-            { base: "set", past: "set", participle: "set", translation: "встановлювати", group: 1, exampleSentences: defaultSentences("set", "set", "set") },
-            { base: "shut", past: "shut", participle: "shut", translation: "зачиняти", group: 1, exampleSentences: defaultSentences("shut", "shut", "shut") },
-            { base: "split", past: "split", participle: "split", translation: "розколювати", group: 1, exampleSentences: defaultSentences("split", "split", "split") },
+          
+  {
+    group: 1,
+    base: "bet",
+    past: "bet",
+    participle: "bet",
+    translation: "закладатись",
+    exampleSentences: [
+      { uk: "«Я часто закладаюся з друзями.»", en: "I often _____ with my friends.", missingWord: "bet" },
+      { uk: "«Він учора заклався на гроші.»", en: "He _____ money yesterday.", missingWord: "bet" },
+      { uk: "«Ми вже заклалися на результат.»", en: "We have _____ on the result.", missingWord: "bet" }
+    ]
+  },
+  {
+    group: 1,
+    base: "burst",
+    past: "burst",
+    participle: "burst",
+    translation: "вибухати",
+    exampleSentences: [
+      { uk: "«Куля часто вибухає при ударі.»", en: "The balloon often _____ when hit.", missingWord: "bursts" },
+      { uk: "«Вчора вона вибухнула раптово.»", en: "It _____ suddenly yesterday.", missingWord: "burst" },
+      { uk: "«Вона вже вибухнула.»", en: "It has already _____.", missingWord: "burst" }
+    ]
+  },
+  {
+    group: 1,
+    base: "cast",
+    past: "cast",
+    participle: "cast",
+    translation: "кидати",
+    exampleSentences: [
+      { uk: "«Він часто кидає сітку у воду.»", en: "He often _____ the net into the water.", missingWord: "casts" },
+      { uk: "«Вчора рибалка кинув сітку.»", en: "The fisherman _____ the net yesterday.", missingWord: "cast" },
+      { uk: "«Він вже кинув сітку.»", en: "He has already _____ the net.", missingWord: "cast" }
+    ]
+  },
+  {
+    group: 1,
+    base: "cost",
+    past: "cost",
+    participle: "cost",
+    translation: "коштувати",
+    exampleSentences: [
+      { uk: "«Це часто коштує багато.»", en: "It often _____ a lot.", missingWord: "costs" },
+      { uk: "«Вчора це коштувало 10 доларів.»", en: "It _____ ten dollars yesterday.", missingWord: "cost" },
+      { uk: "«Це вже коштувало нам дорого.»", en: "It has already _____ us a lot.", missingWord: "cost" }
+    ]
+  },
+  {
+    group: 1,
+    base: "cut",
+    past: "cut",
+    participle: "cut",
+    translation: "різати",
+    exampleSentences: [
+      { uk: "«Вона часто ріже папір.»", en: "She often _____ paper.", missingWord: "cuts" },
+      { uk: "«Вчора я різав яблука.»", en: "I _____ apples yesterday.", missingWord: "cut" },
+      { uk: "«Ми вже порізали овочі.»", en: "We have _____ the vegetables.", missingWord: "cut" }
+    ]
+  },
+  {
+    group: 1,
+    base: "hit",
+    past: "hit",
+    participle: "hit",
+    translation: "вдаряти",
+    exampleSentences: [
+      { uk: "«Він часто б'є м'яч.»", en: "He often _____ the ball.", missingWord: "hits" },
+      { uk: "«Вчора вона вдарила двері.»", en: "She _____ the door yesterday.", missingWord: "hit" },
+      { uk: "«Вони вже вдарили мішень.»", en: "They have _____ the target.", missingWord: "hit" }
+    ]
+  },
+  {
+    group: 1,
+    base: "hurt",
+    past: "hurt",
+    participle: "hurt",
+    translation: "боліти",
+    exampleSentences: [
+      { uk: "«Мене часто болить голова.»", en: "My head often _____.", missingWord: "hurts" },
+      { uk: "«Вчора мене боліло коліно.»", en: "My knee _____ yesterday.", missingWord: "hurt" },
+      { uk: "«Мене вже боліло вухо.»", en: "My ear has already _____.", missingWord: "hurt" }
+    ]
+  },
+  {
+    group: 1,
+    base: "knit",
+    past: "knit",
+    participle: "knit",
+    translation: "в'язати",
+    exampleSentences: [
+      { uk: "«Вона часто в'яже светри.»", en: "She often _____ sweaters.", missingWord: "knits" },
+      { uk: "«Вчора бабуся в'язала шарф.»", en: "Grandma _____ a scarf yesterday.", missingWord: "knit" },
+      { uk: "«Вона вже зв'язала шапку.»", en: "She has _____ a hat.", missingWord: "knit" }
+    ]
+  },
+  {
+    group: 1,
+    base: "let",
+    past: "let",
+    participle: "let",
+    translation: "дозволяти",
+    exampleSentences: [
+      { uk: "«Батьки часто дозволяють мені грати.»", en: "My parents often _____ me play.", missingWord: "let" },
+      { uk: "«Вчора вона дозволила мені піти.»", en: "She _____ me go yesterday.", missingWord: "let" },
+      { uk: "«Вони вже дозволили нам це зробити.»", en: "They have already _____ us do it.", missingWord: "let" }
+    ]
+  },
+  {
+    group: 1,
+    base: "put",
+    past: "put",
+    participle: "put",
+    translation: "класти",
+    exampleSentences: [
+      { uk: "«Я часто кладу ключі на стіл.»", en: "I often _____ my keys on the table.", missingWord: "put" },
+      { uk: "«Вчора вона поклала книгу на полицю.»", en: "She _____ the book on the shelf yesterday.", missingWord: "put" },
+      { uk: "«Він вже поклав гроші в гаманець.»", en: "He has already _____ the money in the wallet.", missingWord: "put" }
+    ]
+  },
+  {
+    group: 1,
+    base: "read",
+    past: "read",
+    participle: "read",
+    translation: "читати (вимова: /red/)",
+    exampleSentences: [
+      { uk: "«Я часто читаю газети.»", en: "I often _____ newspapers.", missingWord: "read" },
+      { uk: "«Вчора вона читала книгу.»", en: "She _____ a book yesterday.", missingWord: "read" },
+      { uk: "«Вони вже прочитали листа.»", en: "They have _____ the letter.", missingWord: "read" }
+    ]
+  },
+  {
+    group: 1,
+    base: "rid",
+    past: "rid",
+    participle: "rid",
+    translation: "позбавлятися",
+    exampleSentences: [
+      { uk: "«Ми часто позбавляємось сміття.»", en: "We often _____ of the trash.", missingWord: "rid" },
+      { uk: "«Вчора я позбувся старих речей.»", en: "I _____ of old things yesterday.", missingWord: "rid" },
+      { uk: "«Вона вже позбулася страху.»", en: "She has _____ of her fear.", missingWord: "rid" }
+    ]
+  },
+  {
+    group: 1,
+    base: "set",
+    past: "set",
+    participle: "set",
+    translation: "встановлювати",
+    exampleSentences: [
+      { uk: "«Він часто встановлює будильник.»", en: "He often _____ the alarm.", missingWord: "sets" },
+      { uk: "«Вчора я встановив нові правила.»", en: "I _____ new rules yesterday.", missingWord: "set" },
+      { uk: "«Ми вже встановили програму.»", en: "We have _____ the program.", missingWord: "set" }
+    ]
+  },
+ {
+  group: 1,
+  base: "shut",
+  past: "shut",
+  participle: "shut",
+  translation: "зачиняти",
+  exampleSentences: [
+    { uk: "«Вона часто зачиняє вікно.»", en: "She often _____ the window.", missingWord: "shuts" },
+    { uk: "«Вчора я зачинив двері.»", en: "I _____ the door yesterday.", missingWord: "shut" },
+    { uk: "«Ми вже зачинили ворота.»", en: "We have _____ the gate.", missingWord: "shut" }
+  ]
+},
+{
+  group: 1,
+  base: "split",
+  past: "split",
+  participle: "split",
+  translation: "розколювати",
+  exampleSentences: [
+    { uk: "«Він часто розколює дрова.»", en: "He often _____ the wood.", missingWord: "splits" },
+    { uk: "«Вчора ми розкололи колоду.»", en: "We _____ the log yesterday.", missingWord: "split" },
+    { uk: "«Вони вже розкололи камінь.»", en: "They have _____ the stone.", missingWord: "split" }
+  ]
+}
+,
 
             // ====================================================================
             // ГРУПА 2: A-B-B (-D на -T або -L на -LT) - 15 слів
             // ====================================================================
-            { base: "bend", past: "bent", participle: "bent", translation: "згинати", group: 2, exampleSentences: defaultSentences("bend", "bent", "bent") },
-            { base: "build", past: "built", participle: "built", translation: "будувати", group: 2, exampleSentences: defaultSentences("build", "built", "built") },
-            { base: "deal", past: "dealt", participle: "dealt", translation: "мати справу", group: 2, exampleSentences: defaultSentences("deal", "dealt", "dealt") },
-            { base: "dream", past: "dreamt", participle: "dreamt", translation: "мріяти", group: 2, exampleSentences: defaultSentences("dream", "dreamt", "dreamt") },
-            { base: "dwell", past: "dwelt", participle: "dwelt", translation: "мешкати", group: 2, exampleSentences: defaultSentences("dwell", "dwelt", "dwelt") },
-            { base: "feel", past: "felt", participle: "felt", translation: "відчувати", group: 2, exampleSentences: defaultSentences("feel", "felt", "felt") },
-            { base: "kneel", past: "knelt", participle: "knelt", translation: "ставати на коліна", group: 2, exampleSentences: defaultSentences("kneel", "knelt", "knelt") },
-            { base: "lend", past: "lent", participle: "lent", translation: "позичати (комусь)", group: 2, exampleSentences: defaultSentences("lend", "lent", "lent") },
-            { base: "mean", past: "meant", participle: "meant", translation: "означати", group: 2, exampleSentences: defaultSentences("mean", "meant", "meant") },
-            { base: "send", past: "sent", participle: "sent", translation: "надсилати", group: 2, exampleSentences: defaultSentences("send", "sent", "sent") },
-            { base: "smell", past: "smelt", participle: "smelt", translation: "нюхати", group: 2, exampleSentences: defaultSentences("smell", "smelt", "smelt") },
-            { base: "speed", past: "sped", participle: "sped", translation: "поспішати", group: 2, exampleSentences: defaultSentences("speed", "sped", "sped") },
-            { base: "spend", past: "spent", participle: "spent", translation: "витрачати", group: 2, exampleSentences: defaultSentences("spend", "spent", "spent") },
-            { base: "spill", past: "spilt", participle: "spilt", translation: "розливати", group: 2, exampleSentences: defaultSentences("spill", "spilt", "spilt") },
-            { base: "spoil", past: "spoilt", participle: "spoilt", translation: "псувати", group: 2, exampleSentences: defaultSentences("spoil", "spoilt", "spoilt") },
+       
+  {
+    group: 2,
+    base: "bend",
+    past: "bent",
+    participle: "bent",
+    translation: "згинати",
+    exampleSentences: [
+      { uk: "«Він часто згинає дріт.»", en: "He often _____ the wire.", missingWord: "bends" },
+      { uk: "«Вчора я зігнув коліно.»", en: "I _____ my knee yesterday.", missingWord: "bent" },
+      { uk: "«Вона вже зігнула паличку.»", en: "She has _____ the stick.", missingWord: "bent" }
+    ]
+  },
+  {
+    group: 2,
+    base: "build",
+    past: "built",
+    participle: "built",
+    translation: "будувати",
+    exampleSentences: [
+      { uk: "«Ми часто будуємо замки з піску.»", en: "We often _____ sandcastles.", missingWord: "build" },
+      { uk: "«Вчора вони побудували будинок.»", en: "They _____ a house yesterday.", missingWord: "built" },
+      { uk: "«Він вже побудував гараж.»", en: "He has _____ a garage.", missingWord: "built" }
+    ]
+  },
+  {
+    group: 2,
+    base: "deal",
+    past: "dealt",
+    participle: "dealt",
+    translation: "мати справу",
+    exampleSentences: [
+      { uk: "«Він часто має справу з клієнтами.»", en: "He often _____ with clients.", missingWord: "deals" },
+      { uk: "«Вчора я мав справу з проблемою.»", en: "I _____ with a problem yesterday.", missingWord: "dealt" },
+      { uk: "«Ми вже мали справу з цим питанням.»", en: "We have _____ with this issue.", missingWord: "dealt" }
+    ]
+  },
+  {
+    group: 2,
+    base: "dream",
+    past: "dreamt",
+    participle: "dreamt",
+    translation: "мріяти",
+    exampleSentences: [
+      { uk: "«Вона часто мріє про подорожі.»", en: "She often _____ about traveling.", missingWord: "dreams" },
+      { uk: "«Вчора я мріяв про море.»", en: "I _____ about the sea yesterday.", missingWord: "dreamt" },
+      { uk: "«Вони вже мріяли про це.»", en: "They have _____ about it.", missingWord: "dreamt" }
+    ]
+  },
+  {
+    group: 2,
+    base: "dwell",
+    past: "dwelt",
+    participle: "dwelt",
+    translation: "мешкати",
+    exampleSentences: [
+      { uk: "«Він мешкає у великому місті.»", en: "He _____ in a big city.", missingWord: "dwells" },
+      { uk: "«Вчора ми мешкали в готелі.»", en: "We _____ in a hotel yesterday.", missingWord: "dwelt" },
+      { uk: "«Вона вже мешкала тут раніше.»", en: "She has _____ here before.", missingWord: "dwelt" }
+    ]
+  },
+  {
+    group: 2,
+    base: "feel",
+    past: "felt",
+    participle: "felt",
+    translation: "відчувати",
+    exampleSentences: [
+      { uk: "«Я часто відчуваю холод.»", en: "I often _____ cold.", missingWord: "feel" },
+      { uk: "«Вчора він відчував біль.»", en: "He _____ pain yesterday.", missingWord: "felt" },
+      { uk: "«Ми вже відчували страх.»", en: "We have _____ fear.", missingWord: "felt" }
+    ]
+  },
+  {
+    group: 2,
+    base: "kneel",
+    past: "knelt",
+    participle: "knelt",
+    translation: "ставати на коліна",
+    exampleSentences: [
+      { uk: "«Він часто стає на коліна під час молитви.»", en: "He often _____ during prayer.", missingWord: "kneels" },
+      { uk: "«Вчора я став на коліна.»", en: "I _____ yesterday.", missingWord: "knelt" },
+      { uk: "«Вона вже ставала на коліна.»", en: "She has _____ before.", missingWord: "knelt" }
+    ]
+  },
+  {
+    group: 2,
+    base: "lend",
+    past: "lent",
+    participle: "lent",
+    translation: "позичати (комусь)",
+    exampleSentences: [
+      { uk: "«Я часто позичаю книги друзям.»", en: "I often _____ books to friends.", missingWord: "lend" },
+      { uk: "«Вчора він позичив мені ручку.»", en: "He _____ me a pen yesterday.", missingWord: "lent" },
+      { uk: "«Вона вже позичила гроші.»", en: "She has _____ money.", missingWord: "lent" }
+    ]
+  },
+  {
+    group: 2,
+    base: "mean",
+    past: "meant",
+    participle: "meant",
+    translation: "означати",
+    exampleSentences: [
+      { uk: "«Це слово означає щось важливе.»", en: "This word _____ something important.", missingWord: "means" },
+      { uk: "«Вчора він мав на увазі інше.»", en: "He _____ something else yesterday.", missingWord: "meant" },
+      { uk: "«Ми вже мали це на увазі.»", en: "We have _____ it already.", missingWord: "meant" }
+    ]
+  },
+  {
+    group: 2,
+    base: "send",
+    past: "sent",
+    participle: "sent",
+    translation: "надсилати",
+    exampleSentences: [
+      { uk: "«Я часто надсилаю листи.»", en: "I often _____ letters.", missingWord: "send" },
+      { uk: "«Вчора вона надіслала повідомлення.»", en: "She _____ a message yesterday.", missingWord: "sent" },
+      { uk: "«Вони вже надіслали запрошення.»", en: "They have _____ the invitation.", missingWord: "sent" }
+    ]
+  },
+  {
+    group: 2,
+    base: "smell",
+    past: "smelt",
+    participle: "smelt",
+    translation: "нюхати",
+    exampleSentences: [
+      { uk: "«Кіт часто нюхає їжу.»", en: "The cat often _____ the food.", missingWord: "smells" },
+      { uk: "«Вчора я нюхав квіти.»", en: "I _____ the flowers yesterday.", missingWord: "smelt" },
+      { uk: "«Вона вже понюхала парфуми.»", en: "She has _____ the perfume.", missingWord: "smelt" }
+    ]
+  },
+  {
+    group: 2,
+    base: "speed",
+    past: "sped",
+    participle: "sped",
+    translation: "поспішати",
+    exampleSentences: [
+      { uk: "«Він часто поспішає на роботу.»", en: "He often _____ to work.", missingWord: "speeds" },
+      { uk: "«Вчора ми поспішали до школи.»", en: "We _____ to school yesterday.", missingWord: "sped" },
+      { uk: "«Вони вже поспішали додому.»", en: "They have _____ home.", missingWord: "sped" }
+    ]
+  },
+  {
+    group: 2,
+    base: "spend",
+    past: "spent",
+    participle: "spent",
+    translation: "витрачати",
+    exampleSentences: [
+      { uk: "«Я часто витрачаю гроші на книги.»", en: "I often _____ money on books.", missingWord: "spend" },
+      { uk: "«Вчора вона витратила багато часу.»", en: "She _____ a lot of time yesterday.", missingWord: "spent" },
+      { uk: "«Ми вже витратили всі кошти.»", en: "We have _____ all the funds.", missingWord: "spent" }
+    ]
+  },
+  {
+    group: 2,
+  base: "spill",
+  past: "spilt",
+  participle: "spilt",
+  translation: "розливати",
+  exampleSentences: [
+    { uk: "«Він часто розливає чай.»", en: "He often _____ tea.", missingWord: "spills" },
+    { uk: "«Вчора я розлив молоко.»", en: "I _____ milk yesterday.", missingWord: "spilt" },
+    { uk: "«Вона вже розлила воду.»", en: "She has _____ the water.", missingWord: "spilt" }
+  ]
+},
+{
+  group: 2,
+  base: "spoil",
+  past: "spoilt",
+  participle: "spoilt",
+  translation: "псувати",
+  exampleSentences: [
+    { uk: "«Він часто псує сюрпризи.»", en: "He often _____ surprises.", missingWord: "spoils" },
+    { uk: "«Вчора ми зіпсували вечірку.»", en: "We _____ the party yesterday.", missingWord: "spoilt" },
+    { uk: "«Вони вже зіпсували їжу.»", en: "They have _____ the food.", missingWord: "spoilt" }
+  ]
+}
+,
 
             // ====================================================================
             // ГРУПА 3: A-B-B (Закінчення на -T) - 15 слів
             // ====================================================================
-            { base: "creep", past: "crept", participle: "crept", translation: "повзати", group: 3, exampleSentences: defaultSentences("creep", "crept", "crept") },
-            { base: "keep", past: "kept", participle: "kept", translation: "тримати", group: 3, exampleSentences: defaultSentences("keep", "kept", "kept") },
-            { base: "leave", past: "left", participle: "left", translation: "залишати", group: 3, exampleSentences: defaultSentences("leave", "left", "left") },
-            { base: "sleep", past: "slept", participle: "slept", translation: "спати", group: 3, exampleSentences: defaultSentences("sleep", "slept", "slept") },
-            { base: "sweep", past: "swept", participle: "swept", translation: "підмітати", group: 3, exampleSentences: defaultSentences("sweep", "swept", "swept") },
-            { base: "weep", past: "wept", participle: "wept", translation: "плакати", group: 3, exampleSentences: defaultSentences("weep", "wept", "wept") },
-            { base: "say", past: "said", participle: "said", translation: "говорити", group: 3, exampleSentences: defaultSentences("say", "said", "said") },
-            { base: "hear", past: "heard", participle: "heard", translation: "чути", group: 3, exampleSentences: defaultSentences("hear", "heard", "heard") },
-            { base: "seek", past: "sought", participle: "sought", translation: "шукати", group: 3, exampleSentences: defaultSentences("seek", "sought", "sought") },
-            { base: "lose", past: "lost", participle: "lost", translation: "губити", group: 3, exampleSentences: defaultSentences("lose", "lost", "lost") },
-            { base: "shoot", past: "shot", participle: "shot", translation: "стріляти", group: 3, exampleSentences: defaultSentences("shoot", "shot", "shot") },
-            { base: "sit", past: "sat", participle: "sat", translation: "сидіти", group: 3, exampleSentences: defaultSentences("sit", "sat", "sat") },
-            { base: "win", past: "won", participle: "won", translation: "перемагати", group: 3, exampleSentences: defaultSentences("win", "won", "won") },
-            { base: "bind", past: "bound", participle: "bound", translation: "зв'язувати", group: 3, exampleSentences: defaultSentences("bind", "bound", "bound") },
-            { base: "find", past: "found", participle: "found", translation: "знаходити", group: 3, exampleSentences: defaultSentences("find", "found", "found") },
+  {
+    group: 3,
+    base: "creep",
+    past: "crept",
+    participle: "crept",
+    translation: "повзати",
+    exampleSentences: [
+      { uk: "«Кішка часто повзе тихо.»", en: "The cat often _____ quietly.", missingWord: "creeps" },
+      { uk: "«Вчора вона повзла під ліжком.»", en: "She _____ under the bed yesterday.", missingWord: "crept" },
+      { uk: "«Кіт вже проповз під диваном.»", en: "The cat has _____ under the sofa.", missingWord: "crept" }
+    ]
+  },
+  {
+    group: 3,
+    base: "keep",
+    past: "kept",
+    participle: "kept",
+    translation: "тримати",
+    exampleSentences: [
+      { uk: "«Я часто тримаю ключі в кишені.»", en: "I often _____ my keys in my pocket.", missingWord: "keep" },
+      { uk: "«Вчора вона тримала дитину на руках.»", en: "She _____ the baby yesterday.", missingWord: "kept" },
+      { uk: "«Ми вже тримали це в таємниці.»", en: "We have _____ it secret.", missingWord: "kept" }
+    ]
+  },
+  {
+    group: 3,
+    base: "leave",
+    past: "left",
+    participle: "left",
+    translation: "залишати",
+    exampleSentences: [
+      { uk: "«Він часто залишає телефон вдома.»", en: "He often _____ his phone at home.", missingWord: "leaves" },
+      { uk: "«Вчора я залишив сумку в автобусі.»", en: "I _____ my bag on the bus yesterday.", missingWord: "left" },
+      { uk: "«Вона вже залишила роботу.»", en: "She has _____ her job.", missingWord: "left" }
+    ]
+  },
+  {
+    group: 3,
+    base: "sleep",
+    past: "slept",
+    participle: "slept",
+    translation: "спати",
+    exampleSentences: [
+      { uk: "«Я часто сплю вісім годин.»", en: "I often _____ for eight hours.", missingWord: "sleep" },
+      { uk: "«Вчора він спав на дивані.»", en: "He _____ on the sofa yesterday.", missingWord: "slept" },
+      { uk: "«Ми вже спали цілу ніч.»", en: "We have _____ all night.", missingWord: "slept" }
+    ]
+  },
+  {
+    group: 3,
+    base: "sweep",
+    past: "swept",
+    participle: "swept",
+    translation: "підмітати",
+    exampleSentences: [
+      { uk: "«Вона часто підмітає підлогу.»", en: "She often _____ the floor.", missingWord: "sweeps" },
+      { uk: "«Вчора я підмітав двір.»", en: "I _____ the yard yesterday.", missingWord: "swept" },
+      { uk: "«Вони вже підмітали кімнату.»", en: "They have _____ the room.", missingWord: "swept" }
+    ]
+  },
+  {
+    group: 3,
+    base: "weep",
+    past: "wept",
+    participle: "wept",
+    translation: "плакати",
+    exampleSentences: [
+      { uk: "«Вона часто плаче під час фільмів.»", en: "She often _____ during movies.", missingWord: "weeps" },
+      { uk: "«Вчора він плакав від радості.»", en: "He _____ with joy yesterday.", missingWord: "wept" },
+      { uk: "«Я вже плакав через це.»", en: "I have _____ about it.", missingWord: "wept" }
+    ]
+  },
+  {
+    group: 3,
+    base: "say",
+    past: "said",
+    participle: "said",
+    translation: "говорити",
+    exampleSentences: [
+      { uk: "«Я часто кажу правду.»", en: "I often _____ the truth.", missingWord: "say" },
+      { uk: "«Вчора вона сказала щось цікаве.»", en: "She _____ something interesting yesterday.", missingWord: "said" },
+      { uk: "«Вони вже сказали це вчителю.»", en: "They have _____ it to the teacher.", missingWord: "said" }
+    ]
+  },
+  {
+    group: 3,
+    base: "hear",
+    past: "heard",
+    participle: "heard",
+    translation: "чути",
+    exampleSentences: [
+      { uk: "«Я часто чую шум з вулиці.»", en: "I often _____ noise from the street.", missingWord: "hear" },
+      { uk: "«Вчора ми чули музику.»", en: "We _____ music yesterday.", missingWord: "heard" },
+      { uk: "«Він вже чув цю новину.»", en: "He has _____ this news.", missingWord: "heard" }
+    ]
+  },
+  {
+    group: 3,
+    base: "seek",
+    past: "sought",
+    participle: "sought",
+    translation: "шукати",
+    exampleSentences: [
+      { uk: "«Вони часто шукають допомогу.»", en: "They often _____ help.", missingWord: "seek" },
+      { uk: "«Вчора я шукав пораду.»", en: "I _____ advice yesterday.", missingWord: "sought" },
+      { uk: "«Ми вже шукали рішення.»", en: "We have _____ a solution.", missingWord: "sought" }
+    ]
+  },
+  {
+    group: 3,
+    base: "lose",
+    past: "lost",
+    participle: "lost",
+    translation: "губити",
+    exampleSentences: [
+      { uk: "«Я часто гублю ключі.»", en: "I often _____ my keys.", missingWord: "lose" },
+      { uk: "«Вчора вона загубила гаманець.»", en: "She _____ her wallet yesterday.", missingWord: "lost" },
+      { uk: "«Вони вже загубили документ.»", en: "They have _____ the document.", missingWord: "lost" }
+    ]
+  },
+  {
+    group: 3,
+    base: "shoot",
+    past: "shot",
+    participle: "shot",
+    translation: "стріляти",
+    exampleSentences: [
+      { uk: "«Він часто стріляє в тирі.»", en: "He often _____ at the range.", missingWord: "shoots" },
+      { uk: "«Вчора я стріляв у мішень.»", en: "I _____ at the target yesterday.", missingWord: "shot" },
+      { uk: "«Вона вже стріляла з лука.»", en: "She has _____ with a bow.", missingWord: "shot" }
+    ]
+  },
+  {
+    group: 3,
+    base: "sit",
+    past: "sat",
+    participle: "sat",
+    translation: "сидіти",
+    exampleSentences: [
+      { uk: "«Я часто сиджу біля вікна.»", en: "I often _____ by the window.", missingWord: "sit" },
+      { uk: "«Вчора ми сиділи в парку.»", en: "We _____ in the park yesterday.", missingWord: "sat" },
+      { uk: "«Він вже сидів на лавці.»", en: "He has _____ on the bench.", missingWord: "sat" }
+    ]
+  },
+  {
+    group: 3,
+    base: "win",
+    past: "won",
+    participle: "won",
+    translation: "перемагати",
+    exampleSentences: [
+      { uk: "«Вони часто перемагають у грі.»", en: "They often _____ the game.", missingWord: "win" },
+      { uk: "«Вчора я переміг у змаганні.»", en: "I _____ the competition yesterday.", missingWord: "won" },
+      { uk: "«Ми вже перемогли суперників.»", en: "We have _____ the opponents.", missingWord: "won" }
+    ]
+  },
+{
+    group: 3,
+  base: "bind",
+  past: "bound",
+  participle: "bound",
+  translation: "зв'язувати",
+  exampleSentences: [
+    { uk: "«Він часто зв'язує книги.»", en: "He often _____ books.", missingWord: "binds" },
+    { uk: "«Вчора я зв'язав мотузку.»", en: "I _____ the rope yesterday.", missingWord: "bound" },
+    { uk: "«Ми вже зв'язали коробки.»", en: "We have _____ the boxes.", missingWord: "bound" }
+  ]
+},
+{
+    group: 3,
+  base: "find",
+  past: "found",
+  participle: "found",
+  translation: "знаходити",
+  exampleSentences: [
+    { uk: "«Я часто знаходжу цікаві речі.»", en: "I often _____ interesting things.", missingWord: "find" },
+    { uk: "«Вчора вона знайшла монету.»", en: "She _____ a coin yesterday.", missingWord: "found" },
+    { uk: "«Вони вже знайшли ключі.»", en: "They have _____ the keys.", missingWord: "found" }
+  ]
+},
 
             // ====================================================================
             // ГРУПА 4: A-B-B (ought/aught) - 10 слів
             // ====================================================================
-            { base: "bring", past: "brought", participle: "brought", translation: "приносити", group: 4, exampleSentences: defaultSentences("bring", "brought", "brought") },
-            { base: "buy", past: "bought", participle: "bought", translation: "купувати", group: 4, exampleSentences: defaultSentences("buy", "bought", "bought") },
-            { base: "catch", past: "caught", participle: "caught", translation: "ловити", group: 4, exampleSentences: defaultSentences("catch", "caught", "caught") },
-            { base: "fight", past: "fought", participle: "fought", translation: "боротися", group: 4, exampleSentences: defaultSentences("fight", "fought", "fought") },
-            { base: "seek", past: "sought", participle: "sought", translation: "шукати", group: 4, exampleSentences: defaultSentences("seek", "sought", "sought") },
-            { base: "teach", past: "taught", participle: "taught", translation: "навчати", group: 4, exampleSentences: defaultSentences("teach", "taught", "taught") },
-            { base: "think", past: "thought", participle: "thought", translation: "думати", group: 4, exampleSentences: defaultSentences("think", "thought", "thought") },
-            { base: "work", past: "wrought", participle: "wrought", translation: "працювати (застар.)", group: 4, exampleSentences: defaultSentences("work", "wrought", "wrought") },
-            { base: "beseech", past: "besought", participle: "besought", translation: "благати", group: 4, exampleSentences: defaultSentences("beseech", "besought", "besought") },
-            { base: "freight", past: "fraught", participle: "fraught", translation: "навантажувати", group: 4, exampleSentences: defaultSentences("freight", "fraught", "fraught") },
+           
+  {
+    group: 4,
+    base: "bring",
+    past: "brought",
+    participle: "brought",
+    translation: "приносити",
+    exampleSentences: [
+      { uk: "«Я часто приношу їжу на роботу.»", en: "I often _____ food to work.", missingWord: "bring" },
+      { uk: "«Вчора вона принесла квіти.»", en: "She _____ flowers yesterday.", missingWord: "brought" },
+      { uk: "«Вони вже принесли подарунки.»", en: "They have _____ the gifts.", missingWord: "brought" }
+    ]
+  },
+  {
+    group: 4,
+    base: "buy",
+    past: "bought",
+    participle: "bought",
+    translation: "купувати",
+    exampleSentences: [
+      { uk: "«Ми часто купуємо овочі на ринку.»", en: "We often _____ vegetables at the market.", missingWord: "buy" },
+      { uk: "«Вчора я купив новий телефон.»", en: "I _____ a new phone yesterday.", missingWord: "bought" },
+      { uk: "«Вона вже купила квитки.»", en: "She has _____ the tickets.", missingWord: "bought" }
+    ]
+  },
+  {
+    group: 4,
+    base: "catch",
+    past: "caught",
+    participle: "caught",
+    translation: "ловити",
+    exampleSentences: [
+      { uk: "«Кіт часто ловить мишей.»", en: "The cat often _____ mice.", missingWord: "catches" },
+      { uk: "«Вчора ми зловили рибу.»", en: "We _____ a fish yesterday.", missingWord: "caught" },
+      { uk: "«Він вже зловив м'яч.»", en: "He has _____ the ball.", missingWord: "caught" }
+    ]
+  },
+  {
+    group: 4,
+    base: "fight",
+    past: "fought",
+    participle: "fought",
+    translation: "боротися",
+    exampleSentences: [
+      { uk: "«Вони часто борються за права.»", en: "They often _____ for rights.", missingWord: "fight" },
+      { uk: "«Вчора солдати боролися хоробро.»", en: "The soldiers _____ bravely yesterday.", missingWord: "fought" },
+      { uk: "«Ми вже боролися з труднощами.»", en: "We have _____ the difficulties.", missingWord: "fought" }
+    ]
+  },
+  {
+    group: 4,
+    base: "seek",
+    past: "sought",
+    participle: "sought",
+    translation: "шукати",
+    exampleSentences: [
+      { uk: "«Я часто шукаю відповіді.»", en: "I often _____ answers.", missingWord: "seek" },
+      { uk: "«Вчора вона шукала допомогу.»", en: "She _____ help yesterday.", missingWord: "sought" },
+      { uk: "«Вони вже шукали рішення.»", en: "They have _____ a solution.", missingWord: "sought" }
+    ]
+  },
+  {
+    group: 4,
+    base: "teach",
+    past: "taught",
+    participle: "taught",
+    translation: "навчати",
+    exampleSentences: [
+      { uk: "«Він часто навчає дітей англійської.»", en: "He often _____ children English.", missingWord: "teaches" },
+      { uk: "«Вчора я навчав граматики.»", en: "I _____ grammar yesterday.", missingWord: "taught" },
+      { uk: "«Вона вже навчала цей клас.»", en: "She has _____ this class.", missingWord: "taught" }
+    ]
+  },
+  {
+    group: 4,
+    base: "think",
+    past: "thought",
+    participle: "thought",
+    translation: "думати",
+    exampleSentences: [
+      { uk: "«Я часто думаю про майбутнє.»", en: "I often _____ about the future.", missingWord: "think" },
+      { uk: "«Вчора він думав про рішення.»", en: "He _____ about the decision yesterday.", missingWord: "thought" },
+      { uk: "«Ми вже думали про це.»", en: "We have _____ about it.", missingWord: "thought" }
+    ]
+  },
+  {
+    group: 4,
+    base: "work",
+    past: "wrought",
+    participle: "wrought",
+    translation: "працювати (застар.)",
+    exampleSentences: [
+      { uk: "«Коваль часто працює з металом.»", en: "The blacksmith often _____ with metal.", missingWord: "works" },
+      { uk: "«Вчора він працював над деталями.»", en: "He _____ on the parts yesterday.", missingWord: "wrought" },
+      { uk: "«Він вже працював над скульптурою.»", en: "He has _____ the sculpture.", missingWord: "wrought" }
+    ]
+  },
+  {
+    group: 4,
+    base: "beseech",
+    past: "besought",
+    participle: "besought",
+    translation: "благати",
+    exampleSentences: [
+      { uk: "«Вона часто благає про допомогу.»", en: "She often _____ for help.", missingWord: "beseeches" },
+      { uk: "«Вчора я благав його залишитися.»", en: "I _____ him to stay yesterday.", missingWord: "besought" },
+      { uk: "«Вони вже благали про милість.»", en: "They have _____ for mercy.", missingWord: "besought" }
+    ]
+  },
+  {
+    group: 4,
+    base: "freight",
+    past: "fraught",
+    participle: "fraught",
+    translation: "навантажувати",
+    exampleSentences: [
+      { uk: "«Водій часто навантажує вантажівку.»", en: "The driver often _____ the truck.", missingWord: "freights" },
+      { uk: "«Вчора ми навантажили контейнер.»", en: "We _____ the container yesterday.", missingWord: "fraught" },
+      { uk: "«Вони вже навантажили товар.»", en: "They have _____ the goods.", missingWord: "fraught" }
+    ]
+  },
 
             // ====================================================================
             // ГРУПА 5: A-B-C (i-a-u, "Рінг" група) - 15 слів
             // ====================================================================
-            { base: "begin", past: "began", participle: "begun", translation: "починати", group: 5, exampleSentences: defaultSentences("begin", "began", "begun") },
-            { base: "drink", past: "drank", participle: "drunk", translation: "пити", group: 5, exampleSentences: defaultSentences("drink", "drank", "drunk") },
-            { base: "ring", past: "rang", participle: "rung", translation: "дзвонити", group: 5, exampleSentences: defaultSentences("ring", "rang", "rung") },
-            { base: "sing", past: "sang", participle: "sung", translation: "співати", group: 5, exampleSentences: defaultSentences("sing", "sang", "sung") },
-            { base: "sink", past: "sank", participle: "sunk", translation: "тонути", group: 5, exampleSentences: defaultSentences("sink", "sank", "sunk") },
-            { base: "swim", past: "swam", participle: "swum", translation: "плавати", group: 5, exampleSentences: defaultSentences("swim", "swam", "swum") },
-            { base: "stink", past: "stank", participle: "stunk", translation: "смердіти", group: 5, exampleSentences: defaultSentences("stink", "stank", "stunk") },
-            { base: "shrink", past: "shrank", participle: "shrunk", translation: "стискатися", group: 5, exampleSentences: defaultSentences("shrink", "shrank", "shrunk") },
-            { base: "spring", past: "sprang", participle: "sprung", translation: "стрибати", group: 5, exampleSentences: defaultSentences("spring", "sprang", "sprung") },
-            { base: "fling", past: "flung", participle: "flung", translation: "кидати", group: 5, exampleSentences: defaultSentences("fling", "flung", "flung") },
-            { base: "slink", past: "slunk", participle: "slunk", translation: "крастися", group: 5, exampleSentences: defaultSentences("slink", "slunk", "slunk") },
-            { base: "wring", past: "wrung", participle: "wrung", translation: "викручувати", group: 5, exampleSentences: defaultSentences("wring", "wrung", "wrung") },
-            { base: "dig", past: "dug", participle: "dug", translation: "копати", group: 5, exampleSentences: defaultSentences("dig", "dug", "dug") },
-            { base: "stick", past: "stuck", participle: "stuck", translation: "приклеювати", group: 5, exampleSentences: defaultSentences("stick", "stuck", "stuck") },
-            { base: "strike", past: "struck", participle: "struck", translation: "вдаряти", group: 5, exampleSentences: defaultSentences("strike", "struck", "struck") },
+        
+  {
+    group: 5,
+    base: "begin",
+    past: "began",
+    participle: "begun",
+    translation: "починати",
+    exampleSentences: [
+      { uk: "«Я часто починаю роботу о 9.»", en: "I often _____ work at 9.", missingWord: "begin" },
+      { uk: "«Вчора ми почали урок рано.»", en: "We _____ the lesson early yesterday.", missingWord: "began" },
+      { uk: "«Вони вже почали гру.»", en: "They have _____ the game.", missingWord: "begun" }
+    ]
+  },
+  {
+    group: 5,
+    base: "drink",
+    past: "drank",
+    participle: "drunk",
+    translation: "пити",
+    exampleSentences: [
+      { uk: "«Він часто п'є воду.»", en: "He often _____ water.", missingWord: "drinks" },
+      { uk: "«Вчора я пив чай.»", en: "I _____ tea yesterday.", missingWord: "drank" },
+      { uk: "«Ми вже випили сік.»", en: "We have _____ the juice.", missingWord: "drunk" }
+    ]
+  },
+  {
+    group: 5,
+    base: "ring",
+    past: "rang",
+    participle: "rung",
+    translation: "дзвонити",
+    exampleSentences: [
+      { uk: "«Вона часто дзвонить мамі.»", en: "She often _____ her mom.", missingWord: "rings" },
+      { uk: "«Вчора я дзвонив тобі.»", en: "I _____ you yesterday.", missingWord: "rang" },
+      { uk: "«Він вже подзвонив у двері.»", en: "He has _____ the doorbell.", missingWord: "rung" }
+    ]
+  },
+  {
+    group: 5,
+    base: "sing",
+    past: "sang",
+    participle: "sung",
+    translation: "співати",
+    exampleSentences: [
+      { uk: "«Вона часто співає пісні.»", en: "She often _____ songs.", missingWord: "sings" },
+      { uk: "«Вчора ми співали разом.»", en: "We _____ together yesterday.", missingWord: "sang" },
+      { uk: "«Вони вже співали цю мелодію.»", en: "They have _____ this tune.", missingWord: "sung" }
+    ]
+  },
+  {
+    base: "sink",
+    past: "sank",
+    participle: "sunk",
+    translation: "тонути",
+    exampleSentences: [
+      { uk: "«Корабель часто тоне в шторм.»", en: "The ship often _____ in storms.", missingWord: "sinks" },
+      { uk: "«Вчора човен потонув.»", en: "The boat _____ yesterday.", missingWord: "sank" },
+      { uk: "«Він вже потонув.»", en: "It has _____ already.", missingWord: "sunk" }
+    ]
+  },
+  {    group: 5,
+    base: "swim",
+    past: "swam",
+    participle: "swum",
+    translation: "плавати",
+    exampleSentences: [
+      { uk: "«Я часто плаваю в басейні.»", en: "I often _____ in the pool.", missingWord: "swim" },
+      { uk: "«Вчора ми плавали в річці.»", en: "We _____ in the river yesterday.", missingWord: "swam" },
+      { uk: "«Вони вже поплавали сьогодні.»", en: "They have _____ today.", missingWord: "swum" }
+    ]
+  },
+  {
+    group: 5,
+    base: "stink",
+    past: "stank",
+    participle: "stunk",
+    translation: "смердіти",
+    exampleSentences: [
+      { uk: "«Сміття часто смердить.»", en: "The trash often _____.", missingWord: "stinks" },
+      { uk: "«Вчора риба смерділа.»", en: "The fish _____ yesterday.", missingWord: "stank" },
+      { uk: "«Воно вже смерділо.»", en: "It has _____ already.", missingWord: "stunk" }
+    ]
+  },
+  {
+    group: 5,
+    base: "shrink",
+    past: "shrank",
+    participle: "shrunk",
+    translation: "стискатися",
+    exampleSentences: [
+      { uk: "«Светр часто стискається після прання.»", en: "The sweater often _____ after washing.", missingWord: "shrinks" },
+      { uk: "«Вчора він стиснувся.»", en: "It _____ yesterday.", missingWord: "shrank" },
+      { uk: "«Він вже стиснувся.»", en: "It has _____ already.", missingWord: "shrunk" }
+    ]
+  },
+  {
+    group: 5,
+    base: "spring",
+    past: "sprang",
+    participle: "sprung",
+    translation: "стрибати",
+    exampleSentences: [
+      { uk: "«Кіт часто стрибає на стіл.»", en: "The cat often _____ onto the table.", missingWord: "springs" },
+      { uk: "«Вчора він стрибнув високо.»", en: "He _____ high yesterday.", missingWord: "sprang" },
+      { uk: "«Він вже стрибнув у воду.»", en: "He has _____ into the water.", missingWord: "sprung" }
+    ]
+  },
+  {
+    group: 5,
+    base: "fling",
+    past: "flung",
+    participle: "flung",
+    translation: "кидати",
+    exampleSentences: [
+      { uk: "«Він часто кидає м'яч далеко.»", en: "He often _____ the ball far.", missingWord: "flings" },
+      { uk: "«Вчора я кинув камінь.»", en: "I _____ a stone yesterday.", missingWord: "flung" },
+      { uk: "«Вона вже кинула сумку.»", en: "She has _____ the bag.", missingWord: "flung" }
+    ]
+  },
+  {
+    group: 5,
+    base: "slink",
+    past: "slunk",
+    participle: "slunk",
+    translation: "крастися",
+    exampleSentences: [
+      { uk: "«Кіт часто крадеться до миші.»", en: "The cat often _____ toward the mouse.", missingWord: "slinks" },
+      { uk: "«Вчора він крадькома зайшов.»", en: "He _____ in quietly yesterday.", missingWord: "slunk" },
+      { uk: "«Він вже прокрався в кімнату.»", en: "He has _____ into the room.", missingWord: "slunk" }
+    ]
+  },
+  {
+    group: 5,
+    base: "wring",
+    past: "wrung",
+    participle: "wrung",
+    translation: "викручувати",
+    exampleSentences: [
+      { uk: "«Вона часто викручує рушник.»", en: "She often _____ the towel.", missingWord: "wrings" },
+      { uk: "«Вчора я викрутив сорочку.»", en: "I _____ the shirt yesterday.", missingWord: "wrung" },
+      { uk: "«Ми вже викрутили ганчірку.»", en: "We have _____ the cloth.", missingWord: "wrung" }
+    ]
+  },
+  {
+    group: 5,
+    base: "dig",
+    past: "dug",
+    participle: "dug",
+    translation: "копати",
+    exampleSentences: [
+      { uk: "«Собака часто копає яму.»", en: "The dog often _____ a hole.", missingWord: "digs" },
+      { uk: "«Вчора я копав сад.»", en: "I _____ the garden yesterday.", missingWord: "dug" },
+      { uk: "«Вони вже викопали яму.»", en: "They have _____ the hole.", missingWord: "dug" }
+    ]
+  },
+ {
+    group: 5,
+  base: "stick",
+  past: "stuck",
+  participle: "stuck",
+  translation: "приклеювати",
+  exampleSentences: [
+    { uk: "«Я часто приклеюю наліпки.»", en: "I often _____ stickers.", missingWord: "stick" },
+    { uk: "«Вчора вона приклеїла фото.»", en: "She _____ the photo yesterday.", missingWord: "stuck" },
+    { uk: "«Ми вже приклеїли етикетку.»", en: "We have _____ the label.", missingWord: "stuck" }
+  ]
+},
+{
+    group: 5,
+  base: "strike",
+  past: "struck",
+  participle: "struck",
+  translation: "вдаряти",
+  exampleSentences: [
+    { uk: "«Він часто вдаряє по м'ячу.»", en: "He often _____ the ball.", missingWord: "strikes" },
+    { uk: "«Вчора блискавка вдарила дерево.»", en: "Lightning _____ the tree yesterday.", missingWord: "struck" },
+    { uk: "«Блискавка вже вдарила дах.»", en: "Lightning has _____ the roof.", missingWord: "struck" }
+  ]
+}
+,
 
             // ====================================================================
             // ГРУПА 6: A-B-C (i-o-en, "Драйв" група) - 15 слів
             // ====================================================================
-            { base: "drive", past: "drove", participle: "driven", translation: "водити", group: 6, exampleSentences: defaultSentences("drive", "drove", "driven") },
-            { base: "rise", past: "rose", participle: "risen", translation: "підійматися", group: 6, exampleSentences: defaultSentences("rise", "rose", "risen") },
-            { base: "write", past: "wrote", participle: "written", translation: "писати", group: 6, exampleSentences: defaultSentences("write", "wrote", "written") },
-            { base: "stride", past: "strode", participle: "stridden", translation: "крокувати", group: 6, exampleSentences: defaultSentences("stride", "strode", "stridden") },
-            { base: "strive", past: "strove", participle: "striven", translation: "прагнути", group: 6, exampleSentences: defaultSentences("strive", "strove", "striven") },
-            { base: "ride", past: "rode", participle: "ridden", translation: "їхати верхи", group: 6, exampleSentences: defaultSentences("ride", "rode", "ridden") },
-            { base: "bite", past: "bit", participle: "bitten", translation: "кусати", group: 6, exampleSentences: defaultSentences("bite", "bit", "bitten") },
-            { base: "hide", past: "hid", participle: "hidden", translation: "ховати", group: 6, exampleSentences: defaultSentences("hide", "hid", "hidden") },
-            { base: "chide", past: "chid", participle: "chidden", translation: "докоряти", group: 6, exampleSentences: defaultSentences("chide", "chid", "chidden") },
-            { base: "forbid", past: "forbade", participle: "forbidden", translation: "забороняти", group: 6, exampleSentences: defaultSentences("forbid", "forbade", "forbidden") },
-            { base: "give", past: "gave", participle: "given", translation: "давати", group: 6, exampleSentences: defaultSentences("give", "gave", "given") },
-            { base: "forgive", past: "forgave", participle: "forgiven", translation: "прощати", group: 6, exampleSentences: defaultSentences("forgive", "forgave", "forgiven") },
-            { base: "eat", past: "ate", participle: "eaten", translation: "їсти", group: 6, exampleSentences: defaultSentences("eat", "ate", "eaten") },
-            { base: "fall", past: "fell", participle: "fallen", translation: "падати", group: 6, exampleSentences: defaultSentences("fall", "fell", "fallen") },
-            { base: "see", past: "saw", participle: "seen", translation: "бачити", group: 6, exampleSentences: defaultSentences("see", "saw", "seen") },
+            {
+    group: 6,
+    base: "drive",
+    past: "drove",
+    participle: "driven",
+    translation: "водити",
+    exampleSentences: [
+      { uk: "«Я часто воджу машину.»", en: "I often _____ a car.", missingWord: "drive" },
+      { uk: "«Вчора вона водила автобус.»", en: "She _____ a bus yesterday.", missingWord: "drove" },
+      { uk: "«Він вже водив вантажівку.»", en: "He has _____ a truck.", missingWord: "driven" }
+    ]
+  },
+  {
+    group: 6,
+    base: "rise",
+    past: "rose",
+    participle: "risen",
+    translation: "підійматися",
+    exampleSentences: [
+      { uk: "«Сонце часто підіймається о 6.»", en: "The sun often _____ at 6.", missingWord: "rises" },
+      { uk: "«Вчора ціни піднялися.»", en: "Prices _____ yesterday.", missingWord: "rose" },
+      { uk: "«Температура вже піднялася.»", en: "The temperature has _____ already.", missingWord: "risen" }
+    ]
+  },
+  {
+    group: 6,
+    base: "write",
+    past: "wrote",
+    participle: "written",
+    translation: "писати",
+    exampleSentences: [
+      { uk: "«Я часто пишу листи.»", en: "I often _____ letters.", missingWord: "write" },
+      { uk: "«Вчора він написав повідомлення.»", en: "He _____ a message yesterday.", missingWord: "wrote" },
+      { uk: "«Ми вже написали звіт.»", en: "We have _____ the report.", missingWord: "written" }
+    ]
+  },
+  {
+    group: 6,
+    base: "stride",
+    past: "strode",
+    participle: "stridden",
+    translation: "крокувати",
+    exampleSentences: [
+      { uk: "«Він часто крокує швидко.»", en: "He often _____ quickly.", missingWord: "strides" },
+      { uk: "«Вчора я крокував через поле.»", en: "I _____ across the field yesterday.", missingWord: "strode" },
+      { uk: "«Вона вже крокувала по доріжці.»", en: "She has _____ along the path.", missingWord: "stridden" }
+    ]
+  },
+  {
+    group: 6,
+    base: "strive",
+    past: "strove",
+    participle: "striven",
+    translation: "прагнути",
+    exampleSentences: [
+      { uk: "«Вони часто прагнуть до успіху.»", en: "They often _____ for success.", missingWord: "strive" },
+      { uk: "«Вчора я прагнув до мети.»", en: "I _____ for the goal yesterday.", missingWord: "strove" },
+      { uk: "«Ми вже прагнули до змін.»", en: "We have _____ for change.", missingWord: "striven" }
+    ]
+  },
+          
+  {
+    group: 6,
+  base: "ride",
+  past: "rode",
+  participle: "ridden",
+  translation: "їхати верхи",
+  exampleSentences: [
+    { uk: "«Він часто їздить на велосипеді.»", en: "He often _____ a bike.", missingWord: "rides" },
+    { uk: "«Вчора я їхав на коні.»", en: "I _____ a horse yesterday.", missingWord: "rode" },
+    { uk: "«Вона вже їздила на мотоциклі.»", en: "She has _____ a motorcycle.", missingWord: "ridden" }
+  ]
+},
+{
+    group: 6,
+  base: "bite",
+  past: "bit",
+  participle: "bitten",
+  translation: "кусати",
+  exampleSentences: [
+    { uk: "«Собака часто кусає іграшку.»", en: "The dog often _____ the toy.", missingWord: "bites" },
+    { uk: "«Вчора я вкусив яблуко.»", en: "I _____ an apple yesterday.", missingWord: "bit" },
+    { uk: "«Він вже вкусив бутерброд.»", en: "He has _____ the sandwich.", missingWord: "bitten" }
+  ]
+},
+{
+    group: 6,
+  base: "hide",
+  past: "hid",
+  participle: "hidden",
+  translation: "ховати",
+  exampleSentences: [
+    { uk: "«Я часто ховаю подарунки.»", en: "I often _____ gifts.", missingWord: "hide" },
+    { uk: "«Вчора вона сховала листа.»", en: "She _____ the letter yesterday.", missingWord: "hid" },
+    { uk: "«Ми вже сховали ключі.»", en: "We have _____ the keys.", missingWord: "hidden" }
+  ]
+},
+{
+    group: 6,
+  base: "chide",
+  past: "chid",
+  participle: "chidden",
+  translation: "докоряти",
+  exampleSentences: [
+    { uk: "«Вона часто докоряє дітям.»", en: "She often _____ the children.", missingWord: "chides" },
+    { uk: "«Вчора я докорив йому за поведінку.»", en: "I _____ him for his behavior yesterday.", missingWord: "chid" },
+    { uk: "«Вони вже докорили учням.»", en: "They have _____ the students.", missingWord: "chidden" }
+  ]
+},
+{
+    group: 6,
+  base: "forbid",
+  past: "forbade",
+  participle: "forbidden",
+  translation: "забороняти",
+  exampleSentences: [
+    { uk: "«Батьки часто забороняють солодке.»", en: "Parents often _____ sweets.", missingWord: "forbid" },
+    { uk: "«Вчора вчитель заборонив шуміти.»", en: "The teacher _____ making noise yesterday.", missingWord: "forbade" },
+    { uk: "«Це вже заборонено законом.»", en: "It has been _____ by law.", missingWord: "forbidden" }
+  ]
+},
+{
+    group: 6,
+  base: "give",
+  past: "gave",
+  participle: "given",
+  translation: "давати",
+  exampleSentences: [
+    { uk: "«Я часто даю поради.»", en: "I often _____ advice.", missingWord: "give" },
+    { uk: "«Вчора вона дала мені книгу.»", en: "She _____ me a book yesterday.", missingWord: "gave" },
+    { uk: "«Він вже дав відповідь.»", en: "He has _____ an answer.", missingWord: "given" }
+  ]
+},
+{
+    group: 6,
+  base: "forgive",
+  past: "forgave",
+  participle: "forgiven",
+  translation: "прощати",
+  exampleSentences: [
+    { uk: "«Я часто прощаю друзів.»", en: "I often _____ my friends.", missingWord: "forgive" },
+    { uk: "«Вчора вона пробачила його.»", en: "She _____ him yesterday.", missingWord: "forgave" },
+    { uk: "«Ми вже пробачили помилку.»", en: "We have _____ the mistake.", missingWord: "forgiven" }
+  ]
+},
+{
+    group: 6,
+  base: "eat",
+  past: "ate",
+  participle: "eaten",
+  translation: "їсти",
+  exampleSentences: [
+    { uk: "«Я часто їм фрукти.»", en: "I often _____ fruit.", missingWord: "eat" },
+    { uk: "«Вчора він їв піцу.»", en: "He _____ pizza yesterday.", missingWord: "ate" },
+    { uk: "«Вона вже з'їла сніданок.»", en: "She has _____ breakfast.", missingWord: "eaten" }
+  ]
+},
+{
+    group: 6,
+  base: "fall",
+  past: "fell",
+  participle: "fallen",
+  translation: "падати",
+  exampleSentences: [
+    { uk: "«Листя часто падає восени.»", en: "Leaves often _____ in autumn.", missingWord: "fall" },
+    { uk: "«Вчора я впав на сходах.»", en: "I _____ on the stairs yesterday.", missingWord: "fell" },
+    { uk: "«Він вже впав на землю.»", en: "He has _____ to the ground.", missingWord: "fallen" }
+  ]
+},
+{    group: 6,
+  base: "see",
+  past: "saw",
+  participle: "seen",
+  translation: "бачити",
+  exampleSentences: [
+    { uk: "«Я часто бачу птахів у парку.»", en: "I often _____ birds in the park.", missingWord: "see" },
+    { uk: "«Вчора вона побачила веселку.»", en: "She _____ a rainbow yesterday.", missingWord: "saw" },
+    { uk: "«Ми вже бачили цей фільм.»", en: "We have _____ this movie.", missingWord: "seen" }
+  ]
+},
+
 
             // ====================================================================
             // ГРУПА 7: A-B-C (e-o-en, "Спік" група) - 15 слів
             // ====================================================================
-            { base: "break", past: "broke", participle: "broken", translation: "ламати", group: 7, exampleSentences: defaultSentences("break", "broke", "broken") },
-            { base: "choose", past: "chose", participle: "chosen", translation: "обирати", group: 7, exampleSentences: defaultSentences("choose", "chose", "chosen") },
-            { base: "freeze", past: "froze", participle: "frozen", translation: "замерзати", group: 7, exampleSentences: defaultSentences("freeze", "froze", "frozen") },
-            { base: "speak", past: "spoke", participle: "spoken", translation: "говорити", group: 7, exampleSentences: defaultSentences("speak", "spoke", "spoken") },
-            { base: "steal", past: "stole", participle: "stolen", translation: "красти", group: 7, exampleSentences: defaultSentences("steal", "stole", "stolen") },
-            { base: "swear", past: "swore", participle: "sworn", translation: "клястися", group: 7, exampleSentences: defaultSentences("swear", "swore", "sworn") },
-            { base: "tear", past: "tore", participle: "torn", translation: "рвати", group: 7, exampleSentences: defaultSentences("tear", "tore", "torn") },
-            { base: "wear", past: "wore", participle: "worn", translation: "носити", group: 7, exampleSentences: defaultSentences("wear", "wore", "worn") },
-            { base: "weave", past: "wove", participle: "woven", translation: "ткати", group: 7, exampleSentences: defaultSentences("weave", "wove", "woven") },
-            { base: "get", past: "got", participle: "gotten", translation: "отримувати (AmE)", group: 7, exampleSentences: defaultSentences("get", "got", "gotten") },
-            { base: "wake", past: "woke", participle: "woken", translation: "прокидатися", group: 7, exampleSentences: defaultSentences("wake", "woke", "woken") },
-            { base: "blow", past: "blew", participle: "blown", translation: "дути", group: 7, exampleSentences: defaultSentences("blow", "blew", "blown") },
-            { base: "grow", past: "grew", participle: "grown", translation: "рости", group: 7, exampleSentences: defaultSentences("grow", "grew", "grown") },
-            { base: "know", past: "knew", participle: "known", translation: "знати", group: 7, exampleSentences: defaultSentences("know", "knew", "known") },
-            { base: "throw", past: "threw", participle: "thrown", translation: "кидати", group: 7, exampleSentences: defaultSentences("throw", "threw", "thrown") },
+     
+  {
+    group: 7,
+    base: "break",
+    past: "broke",
+    participle: "broken",
+    translation: "ламати",
+    exampleSentences: [
+      { uk: "«Я часто ламаю олівці.»", en: "I often _____ pencils.", missingWord: "break" },
+      { uk: "«Вчора він зламав чашку.»", en: "He _____ a cup yesterday.", missingWord: "broke" },
+      { uk: "«Ми вже зламали телефон.»", en: "We have _____ the phone.", missingWord: "broken" }
+    ]
+  },
+  {
+    group: 7,
+    base: "choose",
+    past: "chose",
+    participle: "chosen",
+    translation: "обирати",
+    exampleSentences: [
+      { uk: "«Я часто обираю фрукти.»", en: "I often _____ fruits.", missingWord: "choose" },
+      { uk: "«Вчора вона обрала фільм.»", en: "She _____ a movie yesterday.", missingWord: "chose" },
+      { uk: "«Вони вже обрали подарунок.»", en: "They have _____ a gift.", missingWord: "chosen" }
+    ]
+  },
+  {
+    group: 7,
+    base: "freeze",
+    past: "froze",
+    participle: "frozen",
+    translation: "замерзати",
+    exampleSentences: [
+      { uk: "«Вода часто замерзає взимку.»", en: "Water often _____ in winter.", missingWord: "freezes" },
+      { uk: "«Вчора річка замерзла.»", en: "The river _____ yesterday.", missingWord: "froze" },
+      { uk: "«Вона вже замерзла.»", en: "It has _____ already.", missingWord: "frozen" }
+    ]
+  },
+  {
+    group: 7,
+    base: "speak",
+    past: "spoke",
+    participle: "spoken",
+    translation: "говорити",
+    exampleSentences: [
+      { uk: "«Я часто говорю англійською.»", en: "I often _____ English.", missingWord: "speak" },
+      { uk: "«Вчора він говорив з директором.»", en: "He _____ to the principal yesterday.", missingWord: "spoke" },
+      { uk: "«Ми вже говорили про це.»", en: "We have _____ about it.", missingWord: "spoken" }
+    ]
+  },
+  {
+    group: 7,
+    base: "steal",
+    past: "stole",
+    participle: "stolen",
+    translation: "красти",
+    exampleSentences: [
+      { uk: "«Він часто краде яблука.»", en: "He often _____ apples.", missingWord: "steals" },
+      { uk: "«Вчора хтось вкрав велосипед.»", en: "Someone _____ a bike yesterday.", missingWord: "stole" },
+      { uk: "«Вони вже вкрали гроші.»", en: "They have _____ the money.", missingWord: "stolen" }
+    ]
+  },
+  {
+    group: 7,
+    base: "swear",
+    past: "swore",
+    participle: "sworn",
+    translation: "клястися",
+    exampleSentences: [
+      { uk: "«Я часто клянуся говорити правду.»", en: "I often _____ to tell the truth.", missingWord: "swear" },
+      { uk: "«Вчора він поклявся мовчати.»", en: "He _____ to stay silent yesterday.", missingWord: "swore" },
+      { uk: "«Ми вже поклялися перед судом.»", en: "We have _____ in court.", missingWord: "sworn" }
+    ]
+  },
+  {
+    group: 7,
+    base: "tear",
+    past: "tore",
+    participle: "torn",
+    translation: "рвати",
+    exampleSentences: [
+      { uk: "«Він часто рве папір.»", en: "He often _____ paper.", missingWord: "tears" },
+      { uk: "«Вчора я порвав лист.»", en: "I _____ the sheet yesterday.", missingWord: "tore" },
+      { uk: "«Ми вже порвали коробку.»", en: "We have _____ the box.", missingWord: "torn" }
+    ]
+  },
+  {
+    group: 7,
+    base: "wear",
+    past: "wore",
+    participle: "worn",
+    translation: "носити",
+    exampleSentences: [
+      { uk: "«Я часто ношу джинси.»", en: "I often _____ jeans.", missingWord: "wear" },
+      { uk: "«Вчора вона носила сукню.»", en: "She _____ a dress yesterday.", missingWord: "wore" },
+      { uk: "«Вони вже носили ці костюми.»", en: "They have _____ these suits.", missingWord: "worn" }
+    ]
+  },
+  {
+    group: 7,
+    base: "weave",
+    past: "wove",
+    participle: "woven",
+    translation: "ткати",
+    exampleSentences: [
+      { uk: "«Вона часто тче килими.»", en: "She often _____ rugs.", missingWord: "weaves" },
+      { uk: "«Вчора ми ткали полотно.»", en: "We _____ the fabric yesterday.", missingWord: "wove" },
+      { uk: "«Він вже виткав узор.»", en: "He has _____ the pattern.", missingWord: "woven" }
+    ]
+  },
+  {
+    group: 7,
+    base: "get",
+    past: "got",
+    participle: "gotten",
+    translation: "отримувати (AmE)",
+    exampleSentences: [
+      { uk: "«Я часто отримую листи.»", en: "I often _____ letters.", missingWord: "get" },
+      { uk: "«Вчора вона отримала подарунок.»", en: "She _____ a gift yesterday.", missingWord: "got" },
+      { uk: "«Ми вже отримали відповідь.»", en: "We have _____ a reply.", missingWord: "gotten" }
+    ]
+  },
+  {
+    group: 7,
+    base: "wake",
+    past: "woke",
+    participle: "woken",
+    translation: "прокидатися",
+    exampleSentences: [
+      { uk: "«Я часто прокидаюся о 7.»", en: "I often _____ at 7.", missingWord: "wake" },
+      { uk: "«Вчора вона прокинулася пізно.»", en: "She _____ up late yesterday.", missingWord: "woke" },
+      { uk: "«Він вже прокинувся.»", en: "He has _____ up already.", missingWord: "woken" }
+    ]
+  },
+  {
+    group: 7,
+    base: "blow",
+    past: "blew",
+    participle: "blown",
+    translation: "дути",
+    exampleSentences: [
+      { uk: "«Вітер часто дме сильно.»", en: "The wind often _____ strongly.", missingWord: "blows" },
+      { uk: "«Вчора він дув з півночі.»", en: "It _____ from the north yesterday.", missingWord: "blew" },
+      { uk: "«Вітер вже подув.»", en: "The wind has _____ already.", missingWord: "blown" }
+    ]
+  },
+  {
+    group: 7,
+    base: "grow",
+    past: "grew",
+    participle: "grown",
+    translation: "рости",
+    exampleSentences: [
+      { uk: "«Діти часто ростуть швидко.»", en: "Children often _____ quickly.", missingWord: "grow" },
+      { uk: "«Вчора рослина виросла на 5 см.»", en: "The plant _____ five centimeters yesterday.", missingWord: "grew" },
+      { uk: "«Вона вже виросла.»", en: "It has _____ already.", missingWord: "grown" }
+    ]
+  },
+  {
+  base: "know",
+  past: "knew",
+  participle: "known",
+  translation: "знати",
+  exampleSentences: [
+    { uk: "«Я часто знаю відповіді.»", en: "I often _____ the answers.", missingWord: "know" },
+    { uk: "«Вчора він знав правильний шлях.»", en: "He _____ the right way yesterday.", missingWord: "knew" },
+    { uk: "«Ми вже знали про це.»", en: "We have _____ about it.", missingWord: "known" }
+  ]
+},
+{    group: 7,
+  base: "throw",
+  past: "threw",
+  participle: "thrown",
+  translation: "кидати",
+  exampleSentences: [
+    { uk: "«Він часто кидає м'яч.»", en: "He often _____ the ball.", missingWord: "throws" },
+    { uk: "«Вчора я кинув камінь.»", en: "I _____ a stone yesterday.", missingWord: "threw" },
+    { uk: "«Вона вже кинула листа.»", en: "She has _____ the letter.", missingWord: "thrown" }
+  ]
+}
+,
 
             // ====================================================================
             // ГРУПА 8: A-B-C (aw/ow + ew/own) - 10 слів
             // ====================================================================
-            { base: "draw", past: "drew", participle: "drawn", translation: "малювати", group: 8, exampleSentences: defaultSentences("draw", "drew", "drawn") },
-            { base: "fly", past: "flew", participle: "flown", translation: "літати", group: 8, exampleSentences: defaultSentences("fly", "flew", "flown") },
-            { base: "slay", past: "slew", participle: "slain", translation: "вбивати", group: 8, exampleSentences: defaultSentences("slay", "slew", "slain") },
-            { base: "show", past: "showed", participle: "shown", translation: "показувати", group: 8, exampleSentences: defaultSentences("show", "showed", "shown") },
-            { base: "sow", past: "sowed", participle: "sown", translation: "сіяти", group: 8, exampleSentences: defaultSentences("sow", "sowed", "sown") },
-            { base: "bear", past: "bore", participle: "born", translation: "народжувати", group: 8, exampleSentences: defaultSentences("bear", "bore", "born") },
-            { base: "forsake", past: "forsook", participle: "forsaken", translation: "покидати", group: 8, exampleSentences: defaultSentences("forsake", "forsook", "forsaken") },
-            { base: "lie", past: "lay", participle: "lain", translation: "лежати", group: 8, exampleSentences: defaultSentences("lie", "lay", "lain") },
-            { base: "take", past: "took", participle: "taken", translation: "брати", group: 8, exampleSentences: defaultSentences("take", "took", "taken") },
-            { base: "mistake", past: "mistook", participle: "mistaken", translation: "помилятися", group: 8, exampleSentences: defaultSentences("mistake", "mistook", "mistaken") },
+   {
+    group: 8,
+    base: "draw",
+    past: "drew",
+    participle: "drawn",
+    translation: "малювати",
+    exampleSentences: [
+      { uk: "«Я часто малюю портрети.»", en: "I often _____ portraits.", missingWord: "draw" },
+      { uk: "«Вчора вона намалювала будинок.»", en: "She _____ a house yesterday.", missingWord: "drew" },
+      { uk: "«Він вже намалював картину.»", en: "He has _____ a painting.", missingWord: "drawn" }
+    ]
+  },
+  {
+    group: 8,
+    base: "fly",
+    past: "flew",
+    participle: "flown",
+    translation: "літати",
+    exampleSentences: [
+      { uk: "«Птахи часто літають високо.»", en: "Birds often _____ high.", missingWord: "fly" },
+      { uk: "«Вчора ми летіли до Києва.»", en: "We _____ to Kyiv yesterday.", missingWord: "flew" },
+      { uk: "«Він вже літав за кордон.»", en: "He has _____ abroad.", missingWord: "flown" }
+    ]
+  },
+  {
+    group: 8,
+    base: "slay",
+    past: "slew",
+    participle: "slain",
+    translation: "вбивати",
+    exampleSentences: [
+      { uk: "«Воїн часто вбиває драконів у легендах.»", en: "The warrior often _____ dragons in legends.", missingWord: "slays" },
+      { uk: "«Вчора герой вбив чудовисько.»", en: "The hero _____ the beast yesterday.", missingWord: "slew" },
+      { uk: "«Він вже вбив ворога.»", en: "He has _____ the enemy.", missingWord: "slain" }
+    ]
+  },
+  {
+    group: 8,
+    base: "show",
+    past: "showed",
+    participle: "shown",
+    translation: "показувати",
+    exampleSentences: [
+      { uk: "«Я часто показую фото друзям.»", en: "I often _____ photos to friends.", missingWord: "show" },
+      { uk: "«Вчора вона показала документ.»", en: "She _____ the document yesterday.", missingWord: "showed" },
+      { uk: "«Ми вже показали результати.»", en: "We have _____ the results.", missingWord: "shown" }
+    ]
+  },
+  {
+    group: 8,
+    base: "sow",
+    past: "sowed",
+    participle: "sown",
+    translation: "сіяти",
+    exampleSentences: [
+      { uk: "«Фермер часто сіє пшеницю.»", en: "The farmer often _____ wheat.", missingWord: "sows" },
+      { uk: "«Вчора ми посіяли насіння.»", en: "We _____ the seeds yesterday.", missingWord: "sowed" },
+      { uk: "«Вони вже посіяли поле.»", en: "They have _____ the field.", missingWord: "sown" }
+    ]
+  },
+  {
+    group: 8,
+    base: "bear",
+    past: "bore",
+    participle: "born",
+    translation: "народжувати",
+    exampleSentences: [
+      { uk: "«Вона часто народжує в лікарні.»", en: "She often _____ in the hospital.", missingWord: "bears" },
+      { uk: "«Вчора вона народила хлопчика.»", en: "She _____ a boy yesterday.", missingWord: "bore" },
+      { uk: "«Дитина вже народжена.»", en: "The child has been _____.", missingWord: "born" }
+    ]
+  },
+  {
+    group: 8,
+    base: "forsake",
+    past: "forsook",
+    participle: "forsaken",
+    translation: "покидати",
+    exampleSentences: [
+      { uk: "«Він ніколи не покидає друзів.»", en: "He never _____ his friends.", missingWord: "forsakes" },
+      { uk: "«Вчора вона покинула надію.»", en: "She _____ hope yesterday.", missingWord: "forsook" },
+      { uk: "«Вони вже покинули дім.»", en: "They have _____ the house.", missingWord: "forsaken" }
+    ]
+  },
+  {
+    group: 8,
+    base: "lie",
+    past: "lay",
+    participle: "lain",
+    translation: "лежати",
+    exampleSentences: [
+      { uk: "«Я часто лежу на дивані.»", en: "I often _____ on the sofa.", missingWord: "lie" },
+      { uk: "«Вчора він лежав у ліжку цілий день.»", en: "He _____ in bed all day yesterday.", missingWord: "lay" },
+      { uk: "«Кіт вже лежав на підвіконні.»", en: "The cat has _____ on the windowsill.", missingWord: "lain" }
+    ]
+  },
+  {
+    group: 8,
+    base: "take",
+    past: "took",
+    participle: "taken",
+    translation: "брати",
+    exampleSentences: [
+      { uk: "«Я часто беру з собою парасольку.»", en: "I often _____ an umbrella with me.", missingWord: "take" },
+      { uk: "«Вчора вона взяла книгу.»", en: "She _____ a book yesterday.", missingWord: "took" },
+      { uk: "«Ми вже взяли квитки.»", en: "We have _____ the tickets.", missingWord: "taken" }
+    ]
+  },
+  {
+    group: 8,
+    base: "mistake",
+    past: "mistook",
+    participle: "mistaken",
+    translation: "помилятися",
+    exampleSentences: [
+      { uk: "«Я часто помиляюся в іменах.»", en: "I often _____ names.", missingWord: "mistake" },
+      { uk: "«Вчора він помилився в адресі.»", en: "He _____ the address yesterday.", missingWord: "mistook" },
+      { uk: "«Вона вже помилилася в даті.»", en: "She has been _____ about the date.", missingWord: "mistaken" }
+    ]
+  },
 
             // ====================================================================
             // ГРУПА 9: A-B-A (Come/Run група) - 10 слів
             // ====================================================================
-            { base: "come", past: "came", participle: "come", translation: "приходити", group: 9, exampleSentences: defaultSentences("come", "came", "come") },
-            { base: "become", past: "became", participle: "become", translation: "ставати", group: 9, exampleSentences: defaultSentences("become", "became", "become") },
-            { base: "run", past: "ran", participle: "run", translation: "бігти", group: 9, exampleSentences: defaultSentences("run", "ran", "run") },
-            { base: "overcome", past: "overcame", participle: "overcome", translation: "долати", group: 9, exampleSentences: defaultSentences("overcome", "overcame", "overcome") },
-            { base: "undergo", past: "underwent", participle: "undergone", translation: "зазнавати", group: 9, exampleSentences: defaultSentences("undergo", "underwent", "undergone") },
-            { base: "undo", past: "undid", participle: "undone", translation: "скасовувати", group: 9, exampleSentences: defaultSentences("undo", "undid", "undone") },
-            { base: "retake", past: "retook", participle: "retaken", translation: "перескладати", group: 9, exampleSentences: defaultSentences("retake", "retook", "retaken") },
-            { base: "withdraw", past: "withdrew", participle: "withdrawn", translation: "відкликати", group: 9, exampleSentences: defaultSentences("withdraw", "withdrew", "withdrawn") },
-            { base: "withstand", past: "withstood", participle: "withstood", translation: "витримувати", group: 9, exampleSentences: defaultSentences("withstand", "withstood", "withstood") },
-            { base: "go", past: "went", participle: "gone", translation: "йти (зміна кореня)", group: 9, exampleSentences: defaultSentences("go", "went", "gone") }, // Виняток
+            {
+    group: 9,
+    base: "come",
+    past: "came",
+    participle: "come",
+    translation: "приходити",
+    exampleSentences: [
+      { uk: "«Я часто приходжу додому о 6.»", en: "I often _____ home at 6.", missingWord: "come" },
+      { uk: "«Вчора вона прийшла рано.»", en: "She _____ early yesterday.", missingWord: "came" },
+      { uk: "«Вони вже прийшли на вечірку.»", en: "They have _____ to the party.", missingWord: "come" }
+    ]
+  },
+  {
+    group: 9,
+    base: "become",
+    past: "became",
+    participle: "become",
+    translation: "ставати",
+    exampleSentences: [
+      { uk: "«Він часто стає кращим.»", en: "He often _____ better.", missingWord: "becomes" },
+      { uk: "«Вчора вона стала лікарем.»", en: "She _____ a doctor yesterday.", missingWord: "became" },
+      { uk: "«Це вже стало проблемою.»", en: "It has _____ a problem.", missingWord: "become" }
+    ]
+  },
+  {
+    group: 9,
+    base: "run",
+    past: "ran",
+    participle: "run",
+    translation: "бігти",
+    exampleSentences: [
+      { uk: "«Я часто бігаю вранці.»", en: "I often _____ in the morning.", missingWord: "run" },
+      { uk: "«Вчора він біг до школи.»", en: "He _____ to school yesterday.", missingWord: "ran" },
+      { uk: "«Ми вже бігли марафон.»", en: "We have _____ a marathon.", missingWord: "run" }
+    ]
+  },
+  {
+    group: 9,
+    base: "overcome",
+    past: "overcame",
+    participle: "overcome",
+    translation: "долати",
+    exampleSentences: [
+      { uk: "«Вона часто долає труднощі.»", en: "She often _____ difficulties.", missingWord: "overcomes" },
+      { uk: "«Вчора я подолав страх.»", en: "I _____ my fear yesterday.", missingWord: "overcame" },
+      { uk: "«Вони вже подолали перешкоди.»", en: "They have _____ the obstacles.", missingWord: "overcome" }
+    ]
+  },
+  {
+    group: 9,
+    base: "undergo",
+    past: "underwent",
+    participle: "undergone",
+    translation: "зазнавати",
+    exampleSentences: [
+      { uk: "«Пацієнт часто зазнає лікування.»", en: "The patient often _____ treatment.", missingWord: "undergoes" },
+      { uk: "«Вчора він зазнав операції.»", en: "He _____ surgery yesterday.", missingWord: "underwent" },
+      { uk: "«Вона вже зазнала змін.»", en: "She has _____ changes.", missingWord: "undergone" }
+    ]
+  },
+  {
+    group: 9,
+    base: "undo",
+    past: "undid",
+    participle: "undone",
+    translation: "скасовувати",
+    exampleSentences: [
+      { uk: "«Я часто скасовую останню дію.»", en: "I often _____ the last action.", missingWord: "undo" },
+      { uk: "«Вчора він скасував зміни.»", en: "He _____ the changes yesterday.", missingWord: "undid" },
+      { uk: "«Ми вже скасували помилку.»", en: "We have _____ the mistake.", missingWord: "undone" }
+    ]
+  },
+  {
+    group: 9,
+    base: "retake",
+    past: "retook",
+    participle: "retaken",
+    translation: "перескладати",
+    exampleSentences: [
+      { uk: "«Він часто перескладає іспити.»", en: "He often _____ exams.", missingWord: "retakes" },
+      { uk: "«Вчора я пересклав тест.»", en: "I _____ the test yesterday.", missingWord: "retook" },
+      { uk: "«Вона вже пересклала залік.»", en: "She has _____ the credit.", missingWord: "retaken" }
+    ]
+  },
+  {
+    group: 9,
+    base: "withdraw",
+    past: "withdrew",
+    participle: "withdrawn",
+    translation: "відкликати",
+    exampleSentences: [
+      { uk: "«Я часто відкликаю заявку.»", en: "I often _____ my application.", missingWord: "withdraw" },
+      { uk: "«Вчора він відкликав пропозицію.»", en: "He _____ the offer yesterday.", missingWord: "withdrew" },
+      { uk: "«Ми вже відкликали документи.»", en: "We have _____ the documents.", missingWord: "withdrawn" }
+    ]
+  },
+  {
+    group: 9,
+    base: "withstand",
+    past: "withstood",
+    participle: "withstood",
+    translation: "витримувати",
+    exampleSentences: [
+      { uk: "«Матеріал часто витримує тиск.»", en: "The material often _____ pressure.", missingWord: "withstands" },
+      { uk: "«Вчора конструкція витримала бурю.»", en: "The structure _____ the storm yesterday.", missingWord: "withstood" },
+      { uk: "«Вона вже витримала випробування.»", en: "She has _____ the trial.", missingWord: "withstood" }
+    ]
+  },
+  {
+    group: 9,
+    base: "go",
+    past: "went",
+    participle: "gone",
+    translation: "йти (зміна кореня)",
+    exampleSentences: [
+      { uk: "«Я часто йду до магазину.»", en: "I often _____ to the store.", missingWord: "go" },
+      { uk: "«Вчора ми пішли в кіно.»", en: "We _____ to the cinema yesterday.", missingWord: "went" },
+      { uk: "«Він вже пішов додому.»", en: "He has _____ home.", missingWord: "gone" }
+    ]
+  }
+, // Виняток
 
             // ====================================================================
             // ГРУПА 10: A-B-C (Vowel change) - 15 слів
             // ====================================================================
-            { base: "forbid", past: "forbade", participle: "forbidden", translation: "забороняти", group: 10, exampleSentences: defaultSentences("forbid", "forbade", "forbidden") },
-            { base: "give", past: "gave", participle: "given", translation: "давати", group: 10, exampleSentences: defaultSentences("give", "gave", "given") },
-            { base: "stand", past: "stood", participle: "stood", translation: "стояти", group: 10, exampleSentences: defaultSentences("stand", "stood", "stood") },
-            { base: "understand", past: "understood", participle: "understood", translation: "розуміти", group: 10, exampleSentences: defaultSentences("understand", "understood", "understood") },
-            { base: "feed", past: "fed", participle: "fed", translation: "годувати", group: 10, exampleSentences: defaultSentences("feed", "fed", "fed") },
-            { base: "bleed", past: "bled", participle: "bled", translation: "кровоточити", group: 10, exampleSentences: defaultSentences("bleed", "bled", "bled") },
-            { base: "meet", past: "met", participle: "met", translation: "зустрічати", group: 10, exampleSentences: defaultSentences("meet", "met", "met") },
-            { base: "lead", past: "led", participle: "led", translation: "вести", group: 10, exampleSentences: defaultSentences("lead", "led", "led") },
-            { base: "hold", past: "held", participle: "held", translation: "тримати", group: 10, exampleSentences: defaultSentences("hold", "held", "held") },
-            { base: "sell", past: "sold", participle: "sold", translation: "продавати", group: 10, exampleSentences: defaultSentences("sell", "sold", "sold") },
-            { base: "tell", past: "told", participle: "told", translation: "розповідати", group: 10, exampleSentences: defaultSentences("tell", "told", "told") },
-            { base: "get", past: "got", participle: "got", translation: "отримувати (BrE)", group: 10, exampleSentences: defaultSentences("get", "got", "got") },
-            { base: "shine", past: "shone", participle: "shone", translation: "світити", group: 10, exampleSentences: defaultSentences("shine", "shone", "shone") },
-            { base: "stick", past: "stuck", participle: "stuck", translation: "приклеювати", group: 10, exampleSentences: defaultSentences("stick", "stuck", "stuck") },
-            { base: "swing", past: "swung", participle: "swung", translation: "гойдатися", group: 10, exampleSentences: defaultSentences("swing", "swung", "swung") },
+             {
+    group: 10,
+    base: "forbid",
+    past: "forbade",
+    participle: "forbidden",
+    translation: "забороняти",
+    exampleSentences: [
+      { uk: "«Я часто забороняю солодке.»", en: "I often _____ sweets.", missingWord: "forbid" },
+      { uk: "«Вчора він заборонив шуміти.»", en: "He _____ making noise yesterday.", missingWord: "forbade" },
+      { uk: "«Це вже заборонено законом.»", en: "It has been _____ by law.", missingWord: "forbidden" }
+    ]
+  },
+  {
+    group: 10,
+    base: "give",
+    past: "gave",
+    participle: "given",
+    translation: "давати",
+    exampleSentences: [
+      { uk: "«Я часто даю поради.»", en: "I often _____ advice.", missingWord: "give" },
+      { uk: "«Вчора вона дала мені книгу.»", en: "She _____ me a book yesterday.", missingWord: "gave" },
+      { uk: "«Він вже дав відповідь.»", en: "He has _____ an answer.", missingWord: "given" }
+    ]
+  },
+  {
+    group: 10,
+    base: "stand",
+    past: "stood",
+    participle: "stood",
+    translation: "стояти",
+    exampleSentences: [
+      { uk: "«Я часто стою біля вікна.»", en: "I often _____ by the window.", missingWord: "stand" },
+      { uk: "«Вчора ми стояли в черзі.»", en: "We _____ in line yesterday.", missingWord: "stood" },
+      { uk: "«Вона вже стояла там.»", en: "She has _____ there.", missingWord: "stood" }
+    ]
+  },
+  {
+    group: 10,
+    base: "understand",
+    past: "understood",
+    participle: "understood",
+    translation: "розуміти",
+    exampleSentences: [
+      { uk: "«Я часто розумію інструкції.»", en: "I often _____ instructions.", missingWord: "understand" },
+      { uk: "«Вчора він зрозумів завдання.»", en: "He _____ the task yesterday.", missingWord: "understood" },
+      { uk: "«Ми вже зрозуміли проблему.»", en: "We have _____ the issue.", missingWord: "understood" }
+    ]
+  },
+  {
+    base: "feed",
+    past: "fed",
+    participle: "fed",
+    translation: "годувати",
+    exampleSentences: [
+      { uk: "«Я часто годую кота.»", en: "I often _____ the cat.", missingWord: "feed" },
+      { uk: "«Вчора вона годувала дитину.»", en: "She _____ the baby yesterday.", missingWord: "fed" },
+      { uk: "«Ми вже погодували тварин.»", en: "We have _____ the animals.", missingWord: "fed" }
+    ]
+  },
+  {    group: 10,
+    base: "bleed",
+    past: "bled",
+    participle: "bled",
+    translation: "кровоточити",
+    exampleSentences: [
+      { uk: "«Рана часто кровоточить.»", en: "The wound often _____.", missingWord: "bleeds" },
+      { uk: "«Вчора він кровоточив сильно.»", en: "He _____ heavily yesterday.", missingWord: "bled" },
+      { uk: "«Вона вже кровоточила.»", en: "She has _____ already.", missingWord: "bled" }
+    ]
+  },
+  {
+    group: 10,
+    base: "meet",
+    past: "met",
+    participle: "met",
+    translation: "зустрічати",
+    exampleSentences: [
+      { uk: "«Я часто зустрічаю друзів у кафе.»", en: "I often _____ friends at the café.", missingWord: "meet" },
+      { uk: "«Вчора ми зустріли нових сусідів.»", en: "We _____ new neighbors yesterday.", missingWord: "met" },
+      { uk: "«Вони вже зустрілися з директором.»", en: "They have _____ the principal.", missingWord: "met" }
+    ]
+  },
+  {
+    group: 10,
+    base: "lead",
+    past: "led",
+    participle: "led",
+    translation: "вести",
+    exampleSentences: [
+      { uk: "«Він часто веде команду до успіху.»", en: "He often _____ the team to success.", missingWord: "leads" },
+      { uk: "«Вчора вона вела презентацію.»", en: "She _____ the presentation yesterday.", missingWord: "led" },
+      { uk: "«Ми вже вели переговори.»", en: "We have _____ the negotiations.", missingWord: "led" }
+    ]
+  },
+  {
+    group: 10,
+    base: "hold",
+    past: "held",
+    participle: "held",
+    translation: "тримати",
+    exampleSentences: [
+      { uk: "«Я часто тримаю чашку в руці.»", en: "I often _____ a cup in my hand.", missingWord: "hold" },
+      { uk: "«Вчора він тримав дитину.»", en: "He _____ the baby yesterday.", missingWord: "held" },
+      { uk: "«Вона вже тримала мікрофон.»", en: "She has _____ the microphone.", missingWord: "held" }
+    ]
+  },
+  {
+    group: 10,
+    base: "sell",
+    past: "sold",
+    participle: "sold",
+    translation: "продавати",
+    exampleSentences: [
+      { uk: "«Вони часто продають овочі на ринку.»", en: "They often _____ vegetables at the market.", missingWord: "sell" },
+      { uk: "«Вчора я продав старий велосипед.»", en: "I _____ my old bike yesterday.", missingWord: "sold" },
+      { uk: "«Ми вже продали будинок.»", en: "We have _____ the house.", missingWord: "sold" }
+    ]
+  },
+  {
+    group: 10,
+    base: "tell",
+    past: "told",
+    participle: "told",
+    translation: "розповідати",
+    exampleSentences: [
+      { uk: "«Я часто розповідаю історії дітям.»", en: "I often _____ stories to children.", missingWord: "tell" },
+      { uk: "«Вчора вона розповіла мені новину.»", en: "She _____ me the news yesterday.", missingWord: "told" },
+      { uk: "«Вони вже розповіли правду.»", en: "They have _____ the truth.", missingWord: "told" }
+    ]
+  },
+  {
+    group: 10,
+    base: "get",
+    past: "got",
+    participle: "got",
+    translation: "отримувати (BrE)",
+    exampleSentences: [
+      { uk: "«Я часто отримую повідомлення.»", en: "I often _____ messages.", missingWord: "get" },
+      { uk: "«Вчора він отримав листа.»", en: "He _____ a letter yesterday.", missingWord: "got" },
+      { uk: "«Ми вже отримали відповідь.»", en: "We have _____ a reply.", missingWord: "got" }
+    ]
+  },
+  {
+    base: "shine",
+    past: "shone",
+    participle: "shone",
+    translation: "світити",
+    exampleSentences: [
+      { uk: "«Сонце часто світить яскраво.»", en: "The sun often _____ brightly.", missingWord: "shines" },
+      { uk: "«Вчора ліхтар світив всю ніч.»", en: "The lamp _____ all night yesterday.", missingWord: "shone" },
+      { uk: "«Воно вже світило на подвір’я.»", en: "It has _____ on the yard.", missingWord: "shone" }
+    ]
+  },
+     {    group: 10,
+  base: "stick",
+  past: "stuck",
+  participle: "stuck",
+  translation: "приклеювати",
+  exampleSentences: [
+    { uk: "«Я часто приклеюю наліпки.»", en: "I often _____ stickers.", missingWord: "stick" },
+    { uk: "«Вчора вона приклеїла фото.»", en: "She _____ the photo yesterday.", missingWord: "stuck" },
+    { uk: "«Ми вже приклеїли етикетку.»", en: "We have _____ the label.", missingWord: "stuck" }
+  ]
+},
+{
+    group: 10,
+  base: "swing",
+  past: "swung",
+  participle: "swung",
+  translation: "гойдатися",
+  exampleSentences: [
+    { uk: "«Діти часто гойдаються на гойдалці.»", en: "Children often _____ on the swing.", missingWord: "swing" },
+    { uk: "«Вчора я гойдався в парку.»", en: "I _____ in the park yesterday.", missingWord: "swung" },
+    { uk: "«Вона вже гойдалася сьогодні.»", en: "She has _____ today.", missingWord: "swung" }
+  ]
+},
             
             // ====================================================================
             // ГРУПА 11: A-B-B (i -> u) - 10 слів
             // ====================================================================
-            { base: "cling", past: "clung", participle: "clung", translation: "чіплятися", group: 11, exampleSentences: defaultSentences("cling", "clung", "clung") },
-            { base: "dig", past: "dug", participle: "dug", translation: "копати", group: 11, exampleSentences: defaultSentences("dig", "dug", "dug") },
-            { base: "flee", past: "fled", participle: "fled", translation: "тікати", group: 11, exampleSentences: defaultSentences("flee", "fled", "fled") },
-            { base: "hang", past: "hung", participle: "hung", translation: "вішати", group: 11, exampleSentences: defaultSentences("hang", "hung", "hung") },
-            { base: "sling", past: "slung", participle: "slung", translation: "перекидати через плече", group: 11, exampleSentences: defaultSentences("sling", "slung", "slung") },
-            { base: "spin", past: "spun", participle: "spun", translation: "крутити", group: 11, exampleSentences: defaultSentences("spin", "spun", "spun") },
-            { base: "sting", past: "stung", participle: "stung", translation: "жалити", group: 11, exampleSentences: defaultSentences("sting", "stung", "stung") },
-            { base: "strike", past: "struck", participle: "struck", translation: "вдаряти", group: 11, exampleSentences: defaultSentences("strike", "struck", "struck") },
-            { base: "string", past: "strung", participle: "strung", translation: "нанизувати", group: 11, exampleSentences: defaultSentences("string", "strung", "strung") },
-            { base: "wring", past: "wrung", participle: "wrung", translation: "викручувати", group: 11, exampleSentences: defaultSentences("wring", "wrung", "wrung") },
+            {
+    group: 11,
+    base: "cling",
+    past: "clung",
+    participle: "clung",
+    translation: "чіплятися",
+    exampleSentences: [
+      { uk: "«Дитина часто чіпляється до матері.»", en: "The child often _____ to the mother.", missingWord: "clings" },
+      { uk: "«Вчора я чіплявся за мотузку.»", en: "I _____ to the rope yesterday.", missingWord: "clung" },
+      { uk: "«Він вже чіплявся за край.»", en: "He has _____ to the edge.", missingWord: "clung" }
+    ]
+  },
+  {
+    group: 11,
+    base: "dig",
+    past: "dug",
+    participle: "dug",
+    translation: "копати",
+    exampleSentences: [
+      { uk: "«Собака часто копає яму.»", en: "The dog often _____ a hole.", missingWord: "digs" },
+      { uk: "«Вчора я копав сад.»", en: "I _____ the garden yesterday.", missingWord: "dug" },
+      { uk: "«Вони вже викопали яму.»", en: "They have _____ the hole.", missingWord: "dug" }
+    ]
+  },
+  {
+    group: 11,
+    base: "flee",
+    past: "fled",
+    participle: "fled",
+    translation: "тікати",
+    exampleSentences: [
+      { uk: "«Вони часто тікають від небезпеки.»", en: "They often _____ from danger.", missingWord: "flee" },
+      { uk: "«Вчора злодій тікав з місця злочину.»", en: "The thief _____ the scene yesterday.", missingWord: "fled" },
+      { uk: "«Він вже втік з країни.»", en: "He has _____ the country.", missingWord: "fled" }
+    ]
+  },
+  {
+    group: 11,
+    base: "hang",
+    past: "hung",
+    participle: "hung",
+    translation: "вішати",
+    exampleSentences: [
+      { uk: "«Я часто вішаю пальто на гачок.»", en: "I often _____ my coat on the hook.", missingWord: "hang" },
+      { uk: "«Вчора вона повісила картину.»", en: "She _____ the painting yesterday.", missingWord: "hung" },
+      { uk: "«Ми вже повісили штори.»", en: "We have _____ the curtains.", missingWord: "hung" }
+    ]
+  },
+  {
+    group: 11,
+    base: "sling",
+    past: "slung",
+    participle: "slung",
+    translation: "перекидати через плече",
+    exampleSentences: [
+      { uk: "«Він часто перекидає сумку через плече.»", en: "He often _____ his bag over his shoulder.", missingWord: "slings" },
+      { uk: "«Вчора я перекинув рушник на плече.»", en: "I _____ the towel over my shoulder yesterday.", missingWord: "slung" },
+      { uk: "«Вона вже перекинула рюкзак.»", en: "She has _____ the backpack.", missingWord: "slung" }
+    ]
+  },
+  {
+    group: 11,
+    base: "spin",
+    past: "spun",
+    participle: "spun",
+    translation: "крутити",
+    exampleSentences: [
+      { uk: "«Я часто кручу монету.»", en: "I often _____ a coin.", missingWord: "spin" },
+      { uk: "«Вчора він крутив колесо.»", en: "He _____ the wheel yesterday.", missingWord: "spun" },
+      { uk: "«Ми вже закрутили прядку.»", en: "We have _____ the spindle.", missingWord: "spun" }
+    ]
+  },
+  {
+    group: 11,
+    base: "sting",
+    past: "stung",
+    participle: "stung",
+    translation: "жалити",
+    exampleSentences: [
+      { uk: "«Бджоли часто жалять людей.»", en: "Bees often _____ people.", missingWord: "sting" },
+      { uk: "«Вчора мене вжалив комар.»", en: "A mosquito _____ me yesterday.", missingWord: "stung" },
+      { uk: "«Він вже був ужалений осою.»", en: "He has been _____ by a wasp.", missingWord: "stung" }
+    ]
+  },
+  {
+    group: 11,
+    base: "strike",
+    past: "struck",
+    participle: "struck",
+    translation: "вдаряти",
+    exampleSentences: [
+      { uk: "«Він часто вдаряє по м'ячу.»", en: "He often _____ the ball.", missingWord: "strikes" },
+      { uk: "«Вчора блискавка вдарила дерево.»", en: "Lightning _____ the tree yesterday.", missingWord: "struck" },
+      { uk: "«Блискавка вже вдарила дах.»", en: "Lightning has _____ the roof.", missingWord: "struck" }
+    ]
+  },
+  {
+    group: 11,
+    base: "string",
+    past: "strung",
+    participle: "strung",
+    translation: "нанизувати",
+    exampleSentences: [
+      { uk: "«Вона часто нанизує намистини.»", en: "She often _____ beads.", missingWord: "strings" },
+      { uk: "«Вчора я нанизав гірлянду.»", en: "I _____ the garland yesterday.", missingWord: "strung" },
+      { uk: "«Ми вже нанизали прикраси.»", en: "We have _____ the decorations.", missingWord: "strung" }
+    ]
+  },
+  {
+    group: 11,
+    base: "wring",
+    past: "wrung",
+    participle: "wrung",
+    translation: "викручувати",
+    exampleSentences: [
+      { uk: "«Вона часто викручує рушник.»", en: "She often _____ the towel.", missingWord: "wrings" },
+      { uk: "«Вчора я викрутив сорочку.»", en: "I _____ the shirt yesterday.", missingWord: "wrung" },
+      { uk: "«Ми вже викрутили ганчірку.»", en: "We have _____ the cloth.", missingWord: "wrung" }
+    ]
+  },
 
             // ====================================================================
             // ГРУПА 12: A-B-C (Vowel change) - 10 слів
             // ====================================================================
-            { base: "lie", past: "lay", participle: "lain", translation: "лежати", group: 12, exampleSentences: defaultSentences("lie", "lay", "lain") },
-            { base: "lay", past: "laid", participle: "laid", translation: "класти, накривати", group: 12, exampleSentences: defaultSentences("lay", "laid", "laid") },
-            { base: "pay", past: "paid", participle: "paid", translation: "платити", group: 12, exampleSentences: defaultSentences("pay", "paid", "paid") },
-            { base: "awake", past: "awoke", participle: "awoken", translation: "будити", group: 12, exampleSentences: defaultSentences("awake", "awoke", "awoken") },
-            { base: "hide", past: "hid", participle: "hidden", translation: "ховати", group: 12, exampleSentences: defaultSentences("hide", "hid", "hidden") },
-            { base: "forgive", past: "forgave", participle: "forgiven", translation: "прощати", group: 12, exampleSentences: defaultSentences("forgive", "forgave", "forgiven") },
-            { base: "forsake", past: "forsook", participle: "forsaken", translation: "покидати", group: 12, exampleSentences: defaultSentences("forsake", "forsook", "forsaken") },
-            { base: "prove", past: "proved", participle: "proven", translation: "доводити", group: 12, exampleSentences: defaultSentences("prove", "proved", "proven") },
-            { base: "shear", past: "shore", participle: "shorn", translation: "стригти", group: 12, exampleSentences: defaultSentences("shear", "shore", "shorn") },
-            { base: "slink", past: "slunk", participle: "slunk", "translation": "крастися", group: 12, exampleSentences: defaultSentences("slink", "slunk", "slunk") },
+          {
+    group: 12,
+    base: "lie",
+    past: "lay",
+    participle: "lain",
+    translation: "лежати",
+    exampleSentences: [
+      { uk: "«Я часто лежу на дивані.»", en: "I often _____ on the sofa.", missingWord: "lie" },
+      { uk: "«Вчора він лежав у ліжку.»", en: "He _____ in bed yesterday.", missingWord: "lay" },
+      { uk: "«Кіт вже лежав на підвіконні.»", en: "The cat has _____ on the windowsill.", missingWord: "lain" }
+    ]
+  },
+  {
+    group: 12,
+    base: "lay",
+    past: "laid",
+    participle: "laid",
+    translation: "класти, накривати",
+    exampleSentences: [
+      { uk: "«Я часто кладу книги на полицю.»", en: "I often _____ books on the shelf.", missingWord: "lay" },
+      { uk: "«Вчора вона поклала скатертину.»", en: "She _____ the tablecloth yesterday.", missingWord: "laid" },
+      { uk: "«Ми вже поклали плитку.»", en: "We have _____ the tiles.", missingWord: "laid" }
+    ]
+  },
+  {
+    group: 12,
+    base: "pay",
+    past: "paid",
+    participle: "paid",
+    translation: "платити",
+    exampleSentences: [
+      { uk: "«Я часто плачу карткою.»", en: "I often _____ by card.", missingWord: "pay" },
+      { uk: "«Вчора він заплатив готівкою.»", en: "He _____ in cash yesterday.", missingWord: "paid" },
+      { uk: "«Вона вже заплатила за квитки.»", en: "She has _____ for the tickets.", missingWord: "paid" }
+    ]
+  },
+  {
+    group: 12,
+    base: "awake",
+    past: "awoke",
+    participle: "awoken",
+    translation: "будити",
+    exampleSentences: [
+      { uk: "«Я часто прокидаюся о 6.»", en: "I often _____ at 6.", missingWord: "awake" },
+      { uk: "«Вчора він прокинувся рано.»", en: "He _____ early yesterday.", missingWord: "awoke" },
+      { uk: "«Ми вже прокинулись від шуму.»", en: "We have _____ from the noise.", missingWord: "awoken" }
+    ]
+  },
+  {
+    group: 12,
+    base: "hide",
+    past: "hid",
+    participle: "hidden",
+    translation: "ховати",
+    exampleSentences: [
+      { uk: "«Я часто ховаю подарунки.»", en: "I often _____ gifts.", missingWord: "hide" },
+      { uk: "«Вчора вона сховала листа.»", en: "She _____ the letter yesterday.", missingWord: "hid" },
+      { uk: "«Ми вже сховали ключі.»", en: "We have _____ the keys.", missingWord: "hidden" }
+    ]
+  },
+  {
+    group: 12,
+    base: "forgive",
+    past: "forgave",
+    participle: "forgiven",
+    translation: "прощати",
+    exampleSentences: [
+      { uk: "«Я часто прощаю друзів.»", en: "I often _____ my friends.", missingWord: "forgive" },
+      { uk: "«Вчора вона пробачила його.»", en: "She _____ him yesterday.", missingWord: "forgave" },
+      { uk: "«Ми вже пробачили помилку.»", en: "We have _____ the mistake.", missingWord: "forgiven" }
+    ]
+  },
+  {
+    group: 12,
+    base: "forsake",
+    past: "forsook",
+    participle: "forsaken",
+    translation: "покидати",
+    exampleSentences: [
+      { uk: "«Він ніколи не покидає друзів.»", en: "He never _____ his friends.", missingWord: "forsakes" },
+      { uk: "«Вчора вона покинула надію.»", en: "She _____ hope yesterday.", missingWord: "forsook" },
+      { uk: "«Вони вже покинули дім.»", en: "They have _____ the house.", missingWord: "forsaken" }
+    ]
+  },
+  {
+    group: 12,
+    base: "prove",
+    past: "proved",
+    participle: "proven",
+    translation: "доводити",
+    exampleSentences: [
+      { uk: "«Я часто доводжу свою точку зору.»", en: "I often _____ my point.", missingWord: "prove" },
+      { uk: "«Вчора він довів свою правоту.»", en: "He _____ he was right yesterday.", missingWord: "proved" },
+      { uk: "«Ми вже довели свою невинність.»", en: "We have _____ our innocence.", missingWord: "proven" }
+    ]
+  },
+  {
+    group: 12,
+    base: "shear",
+    past: "shore",
+    participle: "shorn",
+    translation: "стригти",
+    exampleSentences: [
+      { uk: "«Фермер часто стриже овець.»", en: "The farmer often _____ sheep.", missingWord: "shears" },
+      { uk: "«Вчора ми стригли вовну.»", en: "We _____ the wool yesterday.", missingWord: "shore" },
+      { uk: "«Вівця вже пострижена.»", en: "The sheep has been _____.", missingWord: "shorn" }
+    ]
+  },
+  {
+    group: 12,
+    base: "slink",
+    past: "slunk",
+    participle: "slunk",
+    translation: "крастися",
+    exampleSentences: [
+      { uk: "«Кіт часто крадеться до миші.»", en: "The cat often _____ toward the mouse.", missingWord: "slinks" },
+      { uk: "«Вчора він крадькома зайшов.»", en: "He _____ in quietly yesterday.", missingWord: "slunk" },
+      { uk: "«Він вже прокрався в кімнату.»", en: "He has _____ into the room.", missingWord: "slunk" }
+    ]
+  }
+,
 
             // ====================================================================
             // ГРУПА 13: A-B-C (Комплексна зміна) - 10 слів
             // ====================================================================
-            { base: "fall", past: "fell", participle: "fallen", translation: "падати", group: 13, exampleSentences: defaultSentences("fall", "fell", "fallen") },
-            { base: "forget", past: "forgot", participle: "forgotten", translation: "забувати", group: 13, exampleSentences: defaultSentences("forget", "forgot", "forgotten") },
-            { base: "forgive", past: "forgave", participle: "forgiven", translation: "прощати", group: 13, exampleSentences: defaultSentences("forgive", "forgave", "forgiven") },
-            { base: "get", past: "got", participle: "gotten", translation: "отримувати (AmE)", group: 13, exampleSentences: defaultSentences("get", "got", "gotten") },
-            { base: "tread", past: "trod", participle: "trodden", translation: "ступати", group: 13, exampleSentences: defaultSentences("tread", "trod", "trodden") },
-            { base: "undo", past: "undid", participle: "undone", translation: "скасовувати", group: 13, exampleSentences: defaultSentences("undo", "undid", "undone") },
-            { base: "upset", past: "upset", participle: "upset", translation: "засмучувати", group: 13, exampleSentences: defaultSentences("upset", "upset", "upset") },
-            { base: "win", past: "won", participle: "won", translation: "перемагати", group: 13, exampleSentences: defaultSentences("win", "won", "won") },
-            { base: "sell", past: "sold", participle: "sold", translation: "продавати", group: 13, exampleSentences: defaultSentences("sell", "sold", "sold") },
-            { base: "tell", past: "told", participle: "told", translation: "розповідати", group: 13, exampleSentences: defaultSentences("tell", "told", "told") },
+           {
+    group: 13,
+    base: "fall",
+    past: "fell",
+    participle: "fallen",
+    translation: "падати",
+    exampleSentences: [
+      { uk: "«Листя часто падає восени.»", en: "Leaves often _____ in autumn.", missingWord: "fall" },
+      { uk: "«Вчора я впав на сходах.»", en: "I _____ on the stairs yesterday.", missingWord: "fell" },
+      { uk: "«Він вже впав на землю.»", en: "He has _____ to the ground.", missingWord: "fallen" }
+    ]
+  },
+  {
+    group: 13,
+    base: "forget",
+    past: "forgot",
+    participle: "forgotten",
+    translation: "забувати",
+    exampleSentences: [
+      { uk: "«Я часто забуваю ключі.»", en: "I often _____ my keys.", missingWord: "forget" },
+      { uk: "«Вчора вона забула про зустріч.»", en: "She _____ about the meeting yesterday.", missingWord: "forgot" },
+      { uk: "«Ми вже забули його ім’я.»", en: "We have _____ his name.", missingWord: "forgotten" }
+    ]
+  },
+  {
+    group: 13,
+    base: "forgive",
+    past: "forgave",
+    participle: "forgiven",
+    translation: "прощати",
+    exampleSentences: [
+      { uk: "«Я часто прощаю друзів.»", en: "I often _____ my friends.", missingWord: "forgive" },
+      { uk: "«Вчора вона пробачила його.»", en: "She _____ him yesterday.", missingWord: "forgave" },
+      { uk: "«Ми вже пробачили помилку.»", en: "We have _____ the mistake.", missingWord: "forgiven" }
+    ]
+  },
+  {
+    group: 13,
+    base: "get",
+    past: "got",
+    participle: "gotten",
+    translation: "отримувати (AmE)",
+    exampleSentences: [
+      { uk: "«Я часто отримую листи.»", en: "I often _____ letters.", missingWord: "get" },
+      { uk: "«Вчора вона отримала подарунок.»", en: "She _____ a gift yesterday.", missingWord: "got" },
+      { uk: "«Ми вже отримали відповідь.»", en: "We have _____ a reply.", missingWord: "gotten" }
+    ]
+  },
+  {
+    group: 13,
+    base: "tread",
+    past: "trod",
+    participle: "trodden",
+    translation: "ступати",
+    exampleSentences: [
+      { uk: "«Я часто ступаю обережно.»", en: "I often _____ carefully.", missingWord: "tread" },
+      { uk: "«Вчора він ступив на лід.»", en: "He _____ on the ice yesterday.", missingWord: "trod" },
+      { uk: "«Ми вже ступили на нову землю.»", en: "We have _____ new ground.", missingWord: "trodden" }
+    ]
+  },
+  {
+    group: 13,
+    base: "undo",
+    past: "undid",
+    participle: "undone",
+    translation: "скасовувати",
+    exampleSentences: [
+      { uk: "«Я часто скасовую останню дію.»", en: "I often _____ the last action.", missingWord: "undo" },
+      { uk: "«Вчора він скасував зміни.»", en: "He _____ the changes yesterday.", missingWord: "undid" },
+      { uk: "«Ми вже скасували помилку.»", en: "We have _____ the mistake.", missingWord: "undone" }
+    ]
+  },
+  {
+    group: 13,
+    base: "upset",
+    past: "upset",
+    participle: "upset",
+    translation: "засмучувати",
+    exampleSentences: [
+      { uk: "«Я часто засмучуюсь через дрібниці.»", en: "I often get ____ over little things.", missingWord: "upset" },
+      { uk: "«Вчора вона засмутилася через новини.»", en: "She was _____ by the news yesterday.", missingWord: "upset" },
+      { uk: "«Він вже був засмучений.»", en: "He has been _____.", missingWord: "upset" }
+    ]
+  },
+  {
+    group: 13,
+    base: "win",
+    past: "won",
+    participle: "won",
+    translation: "перемагати",
+    exampleSentences: [
+      { uk: "«Я часто виграю у шахи.»", en: "I often _____ at chess.", missingWord: "win" },
+      { uk: "«Вчора команда виграла матч.»", en: "The team _____ the match yesterday.", missingWord: "won" },
+      { uk: "«Ми вже виграли приз.»", en: "We have _____ the prize.", missingWord: "won" }
+    ]
+  },
+  {
+    group: 13,
+    base: "sell",
+    past: "sold",
+    participle: "sold",
+    translation: "продавати",
+    exampleSentences: [
+      { uk: "«Вони часто продають овочі.»", en: "They often _____ vegetables.", missingWord: "sell" },
+      { uk: "«Вчора я продав велосипед.»", en: "I _____ my bike yesterday.", missingWord: "sold" },
+      { uk: "«Ми вже продали будинок.»", en: "We have _____ the house.", missingWord: "sold" }
+    ]
+  },
+  {
+    group: 13,
+    base: "tell",
+    past: "told",
+    participle: "told",
+    translation: "розповідати",
+    exampleSentences: [
+      { uk: "«Я часто розповідаю історії.»", en: "I often _____ stories.", missingWord: "tell" },
+      { uk: "«Вчора вона розповіла мені новину.»", en: "She _____ me the news yesterday.", missingWord: "told" },
+      { uk: "«Вони вже розповіли правду.»", en: "They have _____ the truth.", missingWord: "told" }
+    ]
+  }
+,
 
             // ====================================================================
             // ГРУПА 14: Висока частотність / Повні винятки - ~20 слів
             // ====================================================================
-            { base: "be", past: "was/were", participle: "been", translation: "бути", group: 14, exampleSentences: [{ uk: "Я є.", en: "I am.", form: "base" }, { uk: "Я був там.", en: "I was there.", form: "past" }, { uk: "Я там був.", en: "I have been there.", form: "participle" }] },
-            { base: "do", past: "did", participle: "done", translation: "робити", group: 14, exampleSentences: defaultSentences("do", "did", "done") },
-            { base: "go", past: "went", participle: "gone", translation: "йти", group: 14, exampleSentences: defaultSentences("go", "went", "gone") },
-            { base: "have", past: "had", participle: "had", translation: "мати", group: 14, exampleSentences: defaultSentences("have", "had", "had") },
-            { base: "make", past: "made", participle: "made", translation: "робити/виготовляти", group: 14, exampleSentences: defaultSentences("make", "made", "made") },
-            { base: "say", past: "said", participle: "said", translation: "казати", group: 14, exampleSentences: defaultSentences("say", "said", "said") },
-            { base: "take", past: "took", participle: "taken", translation: "брати", group: 14, exampleSentences: defaultSentences("take", "took", "taken") },
-            { base: "come", past: "came", participle: "come", translation: "приходити", group: 14, exampleSentences: defaultSentences("come", "came", "come") },
-            { base: "see", past: "saw", participle: "seen", translation: "бачити", group: 14, exampleSentences: defaultSentences("see", "saw", "seen") },
-            { base: "tell", past: "told", participle: "told", translation: "розповідати", group: 14, exampleSentences: defaultSentences("tell", "told", "told") },
-            { base: "find", past: "found", participle: "found", translation: "знаходити", group: 14, exampleSentences: defaultSentences("find", "found", "found") },
-            { base: "give", past: "gave", participle: "given", translation: "давати", group: 14, exampleSentences: defaultSentences("give", "gave", "given") },
-            { base: "become", past: "became", participle: "become", translation: "ставати", group: 14, exampleSentences: defaultSentences("become", "became", "become") },
-            { base: "know", past: "knew", participle: "known", translation: "знати", group: 14, exampleSentences: defaultSentences("know", "knew", "known") },
-            { base: "get", past: "got", participle: "gotten", translation: "отримувати", group: 14, exampleSentences: defaultSentences("get", "got", "gotten") },
-            { base: "think", past: "thought", participle: "thought", translation: "думати", group: 14, exampleSentences: defaultSentences("think", "thought", "thought") },
-            { base: "bring", past: "brought", participle: "brought", translation: "приносити", group: 14, exampleSentences: defaultSentences("bring", "brought", "brought") },
-            { base: "write", past: "wrote", participle: "written", translation: "писати", group: 14, exampleSentences: defaultSentences("write", "wrote", "written") },
-            { base: "read", past: "read", participle: "read", translation: "читати (вимова: /red/)", group: 14, exampleSentences: defaultSentences("read", "read", "read") },
-            { base: "send", past: "sent", participle: "sent", translation: "надсилати", group: 14, exampleSentences: defaultSentences("send", "sent", "sent") },
-        ];
-        
-        // --- TTS УТИЛІТИ (КОНВЕРТАЦІЯ PCM -> WAV) ---
-        const base64ToArrayBuffer = (base64) => {
-            const binaryString = atob(base64);
-            const len = binaryString.length;
-            const bytes = new Uint8Array(len);
-            for (let i = 0; i < len; i++) {
-                bytes[i] = binaryString.charCodeAt(i);
-            }
-            return bytes.buffer;
-        };
-
-        const writeString = (view, offset, string) => {
-            for (let i = 0; i < string.length; i++) {
-                view.setUint8(offset + i, string.charCodeAt(i));
-            }
-        };
-
-        const pcmToWav = (pcm16, sampleRate) => {
-            const buffer = new ArrayBuffer(44 + pcm16.length * 2);
-            const view = new DataView(buffer);
-            
-            // RIFF chunk descriptor
-            writeString(view, 0, 'RIFF'); 
-            view.setUint32(4, 36 + pcm16.length * 2, true); 
-            writeString(view, 8, 'WAVE'); 
-            
-            // fmt sub-chunk
-            writeString(view, 12, 'fmt '); 
-            view.setUint32(16, 16, true); 
-            view.setUint16(20, 1, true); 
-            view.setUint16(22, 1, true); 
-            view.setUint32(24, sampleRate, true); 
-            view.setUint32(28, sampleRate * 2, true); 
-            view.setUint16(32, 2, true); 
-            view.setUint16(34, 16, true); 
-            
-            // data sub-chunk
-            writeString(view, 36, 'data'); 
-            view.setUint32(40, pcm16.length * 2, true); 
-            
-            // Write PCM data
-            let offset = 44;
-            for (let i = 0; i < pcm16.length; i++) {
-                view.setInt16(offset, pcm16[i], true);
-                offset += 2;
-            }
-
-            return new Blob([view], { type: 'audio/wav' });
-        };
-        
-        const speak = async (text) => {
-            const voiceName = "Kore"; 
-            const payload = {
-                contents: [{
-                    parts: [{ text: text }]
-                }],
-                generationConfig: {
-                    responseModalities: ["AUDIO"],
-                    speechConfig: {
-                        voiceConfig: {
-                            prebuiltVoiceConfig: { voiceName: voiceName }
-                        }
-                    }
-                },
-                model: "gemini-2.5-flash-preview-tts"
-            };
-            const apiKey = "";
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`;
-
-            // Проста анімація кнопки під час завантаження
-            const speakerIcon = document.getElementById('speakerIcon');
-            if (speakerIcon) {
-                speakerIcon.classList.remove('text-indigo-600', 'hover:text-indigo-800');
-                speakerIcon.classList.add('animate-pulse', 'text-gray-500');
-            }
-
-            try {
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-
-                const result = await response.json();
-                const part = result?.candidates?.[0]?.content?.parts?.[0];
-                const audioData = part?.inlineData?.data;
-                const mimeType = part?.inlineData?.mimeType;
-
-                if (audioData && mimeType && mimeType.startsWith("audio/")) {
-                    const sampleRateMatch = mimeType.match(/rate=(\d+)/);
-                    const sampleRate = sampleRateMatch ? parseInt(sampleRateMatch[1], 10) : 16000;
-                    
-                    const pcmData = base64ToArrayBuffer(audioData);
-                    const pcm16 = new Int16Array(pcmData);
-                    
-                    const wavBlob = pcmToWav(pcm16, sampleRate);
-                    const audioUrl = URL.createObjectURL(wavBlob);
-                    
-                    const audio = new Audio(audioUrl);
-                    audio.play();
-                } else {
-                    console.error("Audio data is missing or malformed.", result);
-                    alert("Помилка: Не вдалося згенерувати аудіо.");
-                }
-            } catch (error) {
-                console.error("TTS API Call failed:", error);
-                // Тиха помилка, щоб не дратувати користувача
-            } finally {
-                // Відновлюємо іконку
-                if (speakerIcon) {
-                    speakerIcon.classList.remove('animate-pulse', 'text-gray-500');
-                    speakerIcon.classList.add('text-indigo-600', 'hover:text-indigo-800');
-                }
-            }
-        };
-
-        // --- ЛОГІКА НАВІГАЦІЇ ---
-
-        // Функція для обробки натискання кнопки "Назад"
-        const handleBack = () => {
-            if (currentMode === 'study' || currentMode === 'drill' || currentMode === 'test') {
-                // З режиму (вивчення/дрил/тест) назад до меню вибору режиму для поточного блоку
-                selectGroup(currentGroupIndex); 
-            } else if (currentMode === 'selectGroup') { 
-                // З меню вибору режиму назад до головної сторінки
-                renderHome();
-            }
-        };
-
-        const updateBackButton = (text, isVisible) => {
-            backBtn.textContent = text;
-            if (isVisible) {
-                backBtn.classList.remove('hidden');
-            } else {
-                backBtn.classList.add('hidden');
-            }
-        }
-        
-        // ----------------------------------------------------
-        // 1. ГОЛОВНА СТОРІНКА (ВИБІР ГРУПИ)
-        // ----------------------------------------------------
-        const getGroupName = (group) => {
-            switch(group) {
-                case 1: return "A-A-A (Форми не змінюються)";
-                case 2: return "A-B-B (-D на -T або -L на -LT)";
-                case 3: return "A-B-B (Закінчення на -T)";
-                case 4: return "A-B-B (ought/aught)";
-                case 5: return "A-B-C (i-a-u, 'Рінг' група)";
-                case 6: return "A-B-C (i-o-en, 'Драйв' група)";
-                case 7: return "A-B-C (e-o-en, 'Спік' група)";
-                case 8: return "A-B-C (aw/ow + ew/own)";
-                case 9: return "A-B-A (Come/Run група)";
-                case 10: return "A-B-B/C (Зміна кореневої голосної)";
-                case 11: return "A-B-B (i -> u, 'Чіпляння')";
-                case 12: return "A-B-C (Комплексна зміна)";
-                case 13: return "A-B-C (Інші складні)";
-                case 14: return "Висока частотність / Повні винятки";
-                default: return "Інші";
-            }
-        }
-
-        const renderHome = () => {
-            currentMode = 'home';
-            updateBackButton("← На головну", false);
-            mainTitle.textContent = "Виберіть блок для вивчення (14 блоків)";
-            
-            let groupBlocksHtml = '';
-            const maxGroup = 14; 
-            
-            for (let i = 1; i <= maxGroup; i++) {
-                const count = verbs.filter(v => v.group === i).length;
-                groupBlocksHtml += `
-                    <div class="p-4 bg-indigo-50 border border-indigo-200 rounded-lg shadow-md cursor-pointer hover:bg-indigo-100 transition duration-150"
-                         onclick="selectGroup(${i})">
-                        <h3 class="text-xl font-semibold text-indigo-700">Блок ${i}</h3>
-                        <p class="text-sm text-gray-600">${count} дієслів (${getGroupName(i)})</p>
-                    </div>
-                `;
-            }
-
-            content.innerHTML = `
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-                    ${groupBlocksHtml}
-                </div>
-                
-                <p class="text-center text-sm text-gray-500">Всього ${verbs.length} дієслів у 14 блоках.</p>
-            `;
-        };
-        
-        // ----------------------------------------------------
-        // 2. МЕНЮ БЛОКУ (ВИБІР РЕЖИМУ)
-        // ----------------------------------------------------
-        const selectGroup = (groupId) => {
-            currentMode = 'selectGroup';
-            currentGroupIndex = groupId;
-            currentGroupData = verbs.filter(v => v.group === groupId);
-
-            updateBackButton("← На головну", true); 
-            mainTitle.textContent = `Блок ${groupId}: Виберіть режим`;
-
-            content.innerHTML = `
-                <h3 class="text-2xl font-semibold text-gray-700 mb-4">Обрана група: ${getGroupName(groupId)}</h3>
-                <p class="text-md text-gray-600 mb-6">Всього слів у блоці: <span class="font-bold text-indigo-600">${currentGroupData.length}</span></p>
-                <div class="space-y-4">
-                    <button class="w-full py-3 px-4 bg-emerald-500 text-white font-semibold rounded-lg hover:bg-emerald-600 transition duration-200"
-                        onclick="renderStudyMode()">
-                        1. Перегляд та прослуховування слів (Режим вивчення)
-                    </button>
-                    <button class="w-full py-3 px-4 bg-yellow-500 text-white font-semibold rounded-lg hover:bg-yellow-600 transition duration-200"
-                        onclick="renderDrillMode()">
-                        2. Режим заучування (Введи 3 форми)
-                    </button>
-                    <button class="w-full py-3 px-4 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition duration-200"
-                        onclick="renderTestMode()">
-                        3. Режим тестування (Речення з пропуском)
-                    </button>
-                </div>
-            `;
-        };
-
-        // ----------------------------------------------------
-        // 3. РЕЖИМ ВИВЧЕННЯ (ТАБЛИЦЯ + TTS)
-        // ----------------------------------------------------
-        const renderStudyMode = () => {
-            currentMode = 'study';
-            updateBackButton("← До меню блоку", true); 
-            mainTitle.textContent = `Вивчення Блоку ${currentGroupIndex} (${currentGroupData.length} слів)`;
-
-            const tableRows = currentGroupData.map(v => `
-                <tr class="border-b hover:bg-gray-50">
-                    <td class="px-4 py-3 text-sm font-medium text-gray-900">${v.translation}</td>
-                    <td class="px-4 py-3 font-mono text-sm">${v.base}</td>
-                    <td class="px-4 py-3 font-mono text-sm">${v.past}</td>
-                    <td class="px-4 py-3 font-mono text-sm">${v.participle}</td>
-                    <td class="px-4 py-3">
-                        <button class="text-indigo-600 hover:text-indigo-800 transition duration-150"
-                            onclick="speak('${v.base}, ${v.past}, and ${v.participle}')">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" id="speakerIcon">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.121-7.778a8 8 0 010 11.314m-12.879-11.314a8 8 0 0111.314 0M11 5v14m-3-7h6l-3-3m0 6l3-3"/>
-                            </svg>
-                        </button>
-                    </td>
-                </tr>
-            `).join('');
-
-            content.innerHTML = `
-                <div class="overflow-x-auto shadow-lg rounded-lg border">
-                    <table class="min-w-full divide-y divide-gray-200">
-                        <thead class="bg-indigo-100">
-                            <tr>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Укр. переклад</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Base (V1)</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Past (V2)</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Participle (V3)</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Вимова</th>
-                            </tr>
-                        </thead>
-                        <tbody class="bg-white divide-y divide-gray-200">
-                            ${tableRows}
-                        </tbody>
-                    </table>
-                </div>
-            `;
-        };
-
-        // ----------------------------------------------------
-        // 4. РЕЖИМ ЗАУЧУВАННЯ (ДРИЛ)
-        // ----------------------------------------------------
-        const renderDrillMode = () => {
-            currentMode = 'drill';
-            updateBackButton("← До меню блоку", true); 
-            mainTitle.textContent = `Заучування Блоку ${currentGroupIndex}`;
-            currentTaskIndex = 0;
-            currentGroupData.sort(() => Math.random() - 0.5); 
-            generateDrillTask();
-        };
-
-        const generateDrillTask = () => {
-            if (currentTaskIndex >= currentGroupData.length) {
-                content.innerHTML = `<div class="p-6 text-center text-xl font-semibold text-green-700">Вітаємо! Всі слова вивчені.</div>`;
-                return;
-            }
-            
-            const verb = currentGroupData[currentTaskIndex];
-
-            content.innerHTML = `
-                <div class="p-6 bg-yellow-50 rounded-xl shadow-inner text-center">
-                    <p class="text-3xl font-bold text-yellow-700 mb-2">${verb.translation}</p>
-                    <p class="text-sm text-gray-500">Введіть три форми дієслова англійською. (${currentTaskIndex + 1}/${currentGroupData.length})</p>
-                </div>
-                
-                <div id="drillInputs" class="space-y-3">
-                    <input type="text" id="inputBase" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-yellow-500 focus:border-yellow-500" placeholder="Base Form (V1)">
-                    <input type="text" id="inputPast" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-yellow-500 focus:border-yellow-500" placeholder="Past Simple (V2)">
-                    <input type="text" id="inputParticiple" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-yellow-500 focus:border-yellow-500" placeholder="Past Participle (V3)">
-                </div>
-
-                <div id="drillFeedback" class="text-center font-bold pt-2"></div>
-
-                <button id="drillCheckBtn" class="w-full py-3 px-4 bg-yellow-500 text-white font-semibold rounded-lg hover:bg-yellow-600 transition duration-200 shadow-md">
-                    Перевірити форми
-                </button>
-            `;
-            
-            const checkBtn = document.getElementById("drillCheckBtn");
-            
-            const drillCheckHandler = () => {
-                const base = document.getElementById("inputBase");
-                const past = document.getElementById("inputPast");
-                const participle = document.getElementById("inputParticiple");
-                const feedback = document.getElementById("drillFeedback");
-
-                let allCorrect = true;
-                let feedbackHtml = '';
-
-                // Перевірка V1
-                if (!checkInput(base.value, verb.base, verb)) {
-                    allCorrect = false;
-                    feedbackHtml += `<p class="text-red-600">❌ V1: Невірно! Правильно: <span class="text-yellow-700">${verb.base}</span></p>`;
-                    base.classList.add('border-red-500', 'border-2');
-                } else {
-                    base.classList.add('border-green-500', 'border-2');
-                }
-
-                // Перевірка V2
-                if (!checkInput(past.value, verb.past, verb)) {
-                    allCorrect = false;
-                    feedbackHtml += `<p class="text-red-600">❌ V2: Невірно! Правильно: <span class="text-yellow-700">${verb.past}</span></p>`;
-                    past.classList.add('border-red-500', 'border-2');
-                } else {
-                    past.classList.add('border-green-500', 'border-2');
-                }
-                
-                // Перевірка V3
-                if (!checkInput(participle.value, verb.participle, verb)) {
-                    allCorrect = false;
-                    feedbackHtml += `<p class="text-red-600">❌ V3: Невірно! Правильно: <span class="text-yellow-700">${verb.participle}</span></p>`;
-                    participle.classList.add('border-red-500', 'border-2');
-                } else {
-                    participle.classList.add('border-green-500', 'border-2');
-                }
-
-                if (allCorrect) {
-                    feedback.innerHTML = `<p class="text-green-600 text-xl">✅ Чудово! Всі форми вірні.</p>`;
-                    base.disabled = true; past.disabled = true; participle.disabled = true;
-                    checkBtn.textContent = "Наступне слово →";
-                    checkBtn.onclick = () => { currentTaskIndex++; generateDrillTask(); };
-                } else {
-                    feedback.innerHTML = feedbackHtml;
-                }
-            };
-
-            // Обробка спеціальних випадків (наприклад, be - was/were)
-            const checkInput = (input, correctForms, verb) => {
-                const cleanedInput = input.trim().toLowerCase();
-                if (verb.base === "be" && correctForms.includes('/')) {
-                    const forms = correctForms.split('/');
-                    return forms.some(form => cleanedInput === form.trim().toLowerCase());
-                }
-                return cleanedInput === correctForms.toLowerCase();
-            };
-            
-            checkBtn.onclick = drillCheckHandler;
-            document.getElementById("inputParticiple").addEventListener('keyup', (event) => {
-                if (event.key === 'Enter') {
-                    drillCheckHandler();
-                }
-            });
-            document.getElementById("inputBase").focus();
-        };
+{
+    group: 14,
+    base: "be",
+    past: "was/were",
+    participle: "been",
+    translation: "бути",
+    exampleSentences: [
+      { uk: "«Я є.»", en: "I am.", missingWord: "am" },
+      { uk: "«Я був там.»", en: "I _____ there.", missingWord: "was" },
+      { uk: "«Я там був.»", en: "I have _____ there.", missingWord: "been" }
+    ]
+  },
+  {
+    group: 14,
+    base: "do",
+    past: "did",
+    participle: "done",
+    translation: "робити",
+    exampleSentences: [
+      { uk: "«Я часто роблю домашнє завдання.»", en: "I often _____ homework.", missingWord: "do" },
+      { uk: "«Вчора він зробив вправу.»", en: "He _____ the exercise yesterday.", missingWord: "did" },
+      { uk: "«Ми вже зробили все.»", en: "We have _____ everything.", missingWord: "done" }
+    ]
+  },
+  {
+    group: 14,
+    base: "go",
+    past: "went",
+    participle: "gone",
+    translation: "йти",
+    exampleSentences: [
+      { uk: "«Я часто йду до магазину.»", en: "I often _____ to the store.", missingWord: "go" },
+      { uk: "«Вчора ми пішли в кіно.»", en: "We _____ to the cinema yesterday.", missingWord: "went" },
+      { uk: "«Він вже пішов додому.»", en: "He has _____ home.", missingWord: "gone" }
+    ]
+  },
+  {
+    group: 14,
+    base: "have",
+    past: "had",
+    participle: "had",
+    translation: "мати",
+    exampleSentences: [
+      { uk: "«Я часто маю багато роботи.»", en: "I often _____ a lot of work.", missingWord: "have" },
+      { uk: "«Вчора вона мала зустріч.»", en: "She _____ a meeting yesterday.", missingWord: "had" },
+      { uk: "«Ми вже мали перерву.»", en: "We have _____ a break.", missingWord: "had" }
+    ]
+  },
+  {
+    group: 14,
+    base: "make",
+    past: "made",
+    participle: "made",
+    translation: "робити/виготовляти",
+    exampleSentences: [
+      { uk: "«Я часто роблю каву.»", en: "I often _____ coffee.", missingWord: "make" },
+      { uk: "«Вчора він зробив помилку.»", en: "He _____ a mistake yesterday.", missingWord: "made" },
+      { uk: "«Вона вже зробила вибір.»", en: "She has _____ a choice.", missingWord: "made" }
+    ]
+  },
+  {
+    group: 14,
+    base: "say",
+    past: "said",
+    participle: "said",
+    translation: "казати",
+    exampleSentences: [
+      { uk: "«Я часто кажу правду.»", en: "I often _____ the truth.", missingWord: "say" },
+      { uk: "«Вчора вона сказала щось цікаве.»", en: "She _____ something interesting yesterday.", missingWord: "said" },
+      { uk: "«Він вже сказав свою думку.»", en: "He has _____ his opinion.", missingWord: "said" }
+    ]
+  },
+  {
+    group: 14,
+    base: "take",
+    past: "took",
+    participle: "taken",
+    translation: "брати",
+    exampleSentences: [
+      { uk: "«Я часто беру парасольку.»", en: "I often _____ an umbrella.", missingWord: "take" },
+      { uk: "«Вчора вона взяла книгу.»", en: "She _____ a book yesterday.", missingWord: "took" },
+      { uk: "«Ми вже взяли квитки.»", en: "We have _____ the tickets.", missingWord: "taken" }
+    ]
+  },
+  {
+    group: 14,
+    base: "come",
+    past: "came",
+    participle: "come",
+    translation: "приходити",
+    exampleSentences: [
+      { uk: "«Я часто приходжу додому о 6.»", en: "I often _____ home at 6.", missingWord: "come" },
+      { uk: "«Вчора вона прийшла рано.»", en: "She _____ early yesterday.", missingWord: "came" },
+      { uk: "«Вони вже прийшли на вечірку.»", en: "They have _____ to the party.", missingWord: "come" }
+    ]
+  },
+  {
+    group: 14,
+    base: "see",
+    past: "saw",
+    participle: "seen",
+    translation: "бачити",
+    exampleSentences: [
+      { uk: "«Я часто бачу птахів у парку.»", en: "I often _____ birds in the park.", missingWord: "see" },
+      { uk: "«Вчора вона побачила веселку.»", en: "She _____ a rainbow yesterday.", missingWord: "saw" },
+      { uk: "«Ми вже бачили цей фільм.»", en: "We have _____ this movie.", missingWord: "seen" }
+    ]
+  },
+  {
+    group: 14,
+    base: "tell",
+    past: "told",
+    participle: "told",
+    translation: "розповідати",
+    exampleSentences: [
+      { uk: "«Я часто розповідаю історії.»", en: "I often _____ stories.", missingWord: "tell" },
+      { uk: "«Вчора вона розповіла мені новину.»", en: "She _____ me the news yesterday.", missingWord: "told" },
+      { uk: "«Вони вже розповіли правду.»", en: "They have _____ the truth.", missingWord: "told" }
+    ]
+  },
+  {
+    group: 14,
+    base: "find",
+    past: "found",
+    participle: "found",
+    translation: "знаходити",
+    exampleSentences: [
+      { uk: "«Я часто знаходжу цікаві речі.»", en: "I often _____ interesting things.", missingWord: "find" },
+      { uk: "«Вчора він знайшов ключі.»", en: "He _____ the keys yesterday.", missingWord: "found" },
+      { uk: "«Ми вже знайшли рішення.»", en: "We have _____ the solution.", missingWord: "found" }
+    ]
+  },
+  {
+    group: 14,
+    base: "give",
+    past: "gave",
+    participle: "given",
+    translation: "давати",
+    exampleSentences: [
+      { uk: "«Я часто даю поради.»", en: "I often _____ advice.", missingWord: "give" },
+      { uk: "«Вчора вона дала мені книгу.»", en: "She _____ me a book yesterday.", missingWord: "gave" },
+      { uk: "«Він вже дав відповідь.»", en: "He has _____ an answer.", missingWord: "given" }
+    ]
+  },
+  {
+    group: 14,
+    base: "become",
+    past: "became",
+    participle: "become",
+    translation: "ставати",
+    exampleSentences: [
+      { uk: "«Він часто стає кращим.»", en: "He often _____ better.", missingWord: "becomes" },
+      { uk: "«Вчора вона стала лікарем.»", en: "She _____ a doctor yesterday.", missingWord: "became" },
+      { uk: "«Це вже стало проблемою.»", en: "It has _____ a problem.", missingWord: "become" }
+    ]
+  },
+  {
+    group: 14,
+    base: "know",
+    past: "knew",
+    participle: "known",
+    translation: "знати",
+    exampleSentences: [
+      { uk: "«Я часто знаю відповіді.»", en: "I often _____ the answers.", missingWord: "know" },
+      { uk: "«Вчора він знав правильний шлях.»", en: "He _____ the right way yesterday.", missingWord: "knew" },
+      { uk: "«Ми вже знали про це.»", en: "We have _____ about it.", missingWord: "known" }
+    ]
+  },
 
 
-        // ----------------------------------------------------
-        // 5. РЕЖИМ ТЕСТУВАННЯ (РЕЧЕННЯ)
-        // ----------------------------------------------------
-        const initializeTestSentences = () => {
-            allSentences = [];
-            currentGroupData.forEach(verb => {
-                // Додаємо 3 речення для кожного дієслова
-                verb.exampleSentences.forEach(sentence => {
-                    allSentences.push({
-                        ...sentence,
-                        verbObject: verb
-                    });
-                });
-            });
-            // Перемішуємо речення
-            for (let i = allSentences.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [allSentences[i], allSentences[j]] = [allSentences[j], allSentences[i]];
-            }
-            currentTaskIndex = 0;
-            correctAnswers = 0; 
-        };
+            {
+    group: 14,
+  base: "get",
+  past: "got",
+  participle: "gotten",
+  translation: "отримувати",
+  exampleSentences: [
+    { uk: "«Я часто отримую повідомлення.»", en: "I often _____ messages.", missingWord: "get" },
+    { uk: "«Вчора він отримав листа.»", en: "He _____ a letter yesterday.", missingWord: "got" },
+    { uk: "«Ми вже отримали відповідь.»", en: "We have _____ a reply.", missingWord: "gotten" }
+  ]
+},
+{
+    group: 14,
+  base: "think",
+  past: "thought",
+  participle: "thought",
+  translation: "думати",
+  exampleSentences: [
+    { uk: "«Я часто думаю про майбутнє.»", en: "I often _____ about the future.", missingWord: "think" },
+    { uk: "«Вчора вона думала про поїздку.»", en: "She _____ about the trip yesterday.", missingWord: "thought" },
+    { uk: "«Ми вже подумали над цим.»", en: "We have _____ about it.", missingWord: "thought" }
+  ]
+},
+{
+    group: 14,
+  base: "bring",
+  past: "brought",
+  participle: "brought",
+  translation: "приносити",
+  exampleSentences: [
+    { uk: "«Я часто приношу каву колегам.»", en: "I often _____ coffee to colleagues.", missingWord: "bring" },
+    { uk: "«Вчора він приніс документи.»", en: "He _____ the documents yesterday.", missingWord: "brought" },
+    { uk: "«Вона вже принесла подарунок.»", en: "She has _____ the gift.", missingWord: "brought" }
+  ]
+},
+{
+    group: 14,
+  base: "write",
+  past: "wrote",
+  participle: "written",
+  translation: "писати",
+  exampleSentences: [
+    { uk: "«Я часто пишу листи.»", en: "I often _____ letters.", missingWord: "write" },
+    { uk: "«Вчора він написав повідомлення.»", en: "He _____ a message yesterday.", missingWord: "wrote" },
+    { uk: "«Ми вже написали звіт.»", en: "We have _____ the report.", missingWord: "written" }
+  ]
+},
+{
+    group: 14,
+  base: "read",
+  past: "read",
+  participle: "read",
+  translation: "читати (вимова: /red/)",
+  exampleSentences: [
+    { uk: "«Я часто читаю книги.»", en: "I often _____ books.", missingWord: "read" },
+    { uk: "«Вчора вона читала статтю.»", en: "She _____ an article yesterday.", missingWord: "read" },
+    { uk: "«Ми вже прочитали інструкцію.»", en: "We have _____ the instructions.", missingWord: "read" }
+  ]
+},
+{
+    group: 14,
+  base: "send",
+  past: "sent",
+  participle: "sent",
+  translation: "надсилати",
+  exampleSentences: [
+    { uk: "«Я часто надсилаю листи.»", en: "I often _____ letters.", missingWord: "send" },
+    { uk: "«Вчора він надіслав запрошення.»", en: "He _____ the invitation yesterday.", missingWord: "sent" },
+    { uk: "«Ми вже надіслали документи.»", en: "We have _____ the documents.", missingWord: "sent" }
+  ]
+}
+];
 
-        const renderTestMode = () => {
-            currentMode = 'test';
-            updateBackButton("← До меню блоку", true); 
-            mainTitle.textContent = `Тестування Блоку ${currentGroupIndex}`;
-            initializeTestSentences();
-            generateTestTask();
-        };
+// ===== ОЗВУЧЕННЯ =====
+function speak(text) {
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = "en-US"; u.rate = 0.9;
+  window.speechSynthesis.cancel();
+  window.speechSynthesis.speak(u);
+}
 
-        const generateTestTask = () => {
-            if (allSentences.length === 0 || currentTaskIndex >= allSentences.length) {
-                content.innerHTML = `
-                    <div class="p-6 text-center text-xl font-semibold text-gray-700">
-                        Тест завершено! <br>
-                        <span class="text-green-600">Ваш результат: ${correctAnswers} / ${allSentences.length}</span>
-                    </div>`;
-                return;
-            }
+// ===== КНОПКА НАЗАД =====
+function updateBackButton(text, visible) {
+  backBtn.textContent = text;
+  backBtn.classList.toggle("hidden", !visible);
+}
+function handleBack() {
+  if (["study", "drill", "test"].includes(currentMode)) selectGroup(currentGroupIndex);
+  else if (currentMode === "selectGroup") renderHome();
+}
 
-            const currentTask = allSentences[currentTaskIndex];
-            const verb = currentTask.verbObject;
-            const correctWord = verb[currentTask.form]; 
-            
-            // Обробка спеціальних випадків (наприклад, was/were)
-            const possibleCorrectWords = correctWord.includes('/') ? correctWord.split('/').map(w => w.trim().toLowerCase()) : [correctWord.toLowerCase()];
-            
-            // Створюємо паттерн для заміни
-            let enSentenceWithGap = currentTask.en;
-            let replaced = false;
+// ===== ГОЛОВНИЙ ЕКРАН =====
+function renderHome() {
+  currentMode = 'home'; updateBackButton("", false);
+  mainTitle.textContent = "Виберіть блок для вивчення";
+  let html = "";
+  for (let i = 1; i <= 14; i++) {
+    const count = verbs.filter(v => v.group === i).length;
+    html += `
+      <div onclick="selectGroup(${i})" class="p-4 bg-indigo-50 border border-indigo-200 rounded-lg shadow-md cursor-pointer hover:bg-indigo-100 transition text-center">
+        <h3 class="text-lg md:text-xl font-semibold text-indigo-700">Блок ${i}</h3>
+        <p class="text-sm text-gray-600">${count} дієслів</p>
+      </div>`;
+  }
+  content.innerHTML = `<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">${html}</div>`;
+}
 
-            // Спроба замінити, шукаючи одне з можливих правильних слів
-            for (const word of currentTask.en.split(/\s+/)) {
-                // Чисте слово без пунктуації для порівняння
-                const cleanWord = word.replace(/[^a-z]/gi, '').toLowerCase();
+// ===== ВИБІР ГРУПИ =====
+function selectGroup(groupId) {
+  currentGroupIndex = groupId;
+  currentGroupData = verbs.filter(v => v.group === groupId);
+  currentMode = 'selectGroup'; updateBackButton("← На головну", true);
+  mainTitle.textContent = `Блок ${groupId}`;
+  content.innerHTML = `
+    <div class="space-y-3">
+      <button onclick="renderStudyMode()" class="w-full py-3 bg-emerald-500 text-white font-semibold rounded-lg">1️⃣ Вивчення</button>
+      <button onclick="renderDrillMode()" class="w-full py-3 bg-yellow-500 text-white font-semibold rounded-lg">2️⃣ Заучування</button>
+      <button onclick="renderTestMode()" class="w-full py-3 bg-indigo-600 text-white font-semibold rounded-lg">3️⃣ Тестування</button>
+    </div>`;
+}
 
-                if (possibleCorrectWords.includes(cleanWord)) {
-                    // Знайти оригінальне слово в реченні, щоб зберегти пунктуацію
-                    const regex = new RegExp(`\\b${cleanWord}\\b`, 'i');
-                    enSentenceWithGap = enSentenceWithGap.replace(regex, '_____');
-                    replaced = true;
-                    break;
-                }
-            }
+// ===== ВИВЧЕННЯ =====
+function renderStudyMode() {
+  currentMode = 'study'; updateBackButton("← До меню", true);
+  mainTitle.textContent = `Вивчення блоку ${currentGroupIndex}`;
+  const rows = currentGroupData.map(v => `
+    <tr class="border-b hover:bg-gray-50">
+      <td>${v.translation}</td><td>${v.base}</td><td>${v.past}</td><td>${v.participle}</td>
+      <td><button onclick="speak('${v.base}, ${v.past}, ${v.participle}')" class="text-indigo-600 text-xl">🔊</button></td>
+    </tr>`).join('');
+  content.innerHTML = `<div class="overflow-x-auto"><table class="text-sm md:text-base border rounded-lg"><thead class="bg-indigo-100"><tr><th>Переклад</th><th>V1</th><th>V2</th><th>V3</th><th>Озвучення</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
 
-            // Якщо не вдалося знайти і замінити (рідкісні випадки)
-            if (!replaced) {
-                enSentenceWithGap = currentTask.en.replace(new RegExp(correctWord, 'i'), '_____');
-            }
-            
-            content.innerHTML = `
-                <div id="testArea">
-                    
-                    <!-- Тільки українське речення без підказок -->
-                    <div class="p-4 bg-gray-50 rounded-lg shadow-inner">
-                        <p class="text-lg italic text-gray-900">"${currentTask.uk}"</p>
-                    </div>
+// ===== ДРИЛ =====
+function renderDrillMode() {
+  currentMode = 'drill'; updateBackButton("← До меню", true);
+  mainTitle.textContent = `Заучування ${currentGroupIndex}`;
+  currentTaskIndex = 0; currentGroupData.sort(() => Math.random() - 0.5);
+  nextDrillTask();
+}
+function nextDrillTask() {
+  if (currentTaskIndex >= currentGroupData.length) return content.innerHTML = `<div class="p-6 text-center text-green-700 font-bold text-lg">✅ Усі слова пройдено!</div>`;
+  const v = currentGroupData[currentTaskIndex];
+  content.innerHTML = `
+  <div class="text-center">
+    <p class="text-xl md:text-2xl font-bold text-yellow-700 mb-2">${v.translation}</p>
+    <input id="b" class="border p-3 rounded w-full max-w-xs mb-2 text-center" placeholder="V1">
+    <input id="p" class="border p-3 rounded w-full max-w-xs mb-2 text-center" placeholder="V2">
+    <input id="pp" class="border p-3 rounded w-full max-w-xs mb-3 text-center" placeholder="V3">
+    <div id="feed" class="mt-2 text-lg"></div>
+    <button id="chk" class="w-full md:w-auto py-3 px-6 bg-yellow-500 text-white font-semibold rounded-lg">Перевірити</button>
+  </div>`;
+  const chk = document.getElementById("chk");
+  chk.onclick = () => {
+    const b = bEl("b"), p = bEl("p"), pp = bEl("pp"), f = bEl("feed");
+    if (b === v.base && p === v.past && pp === v.participle) f.innerHTML = "✅ Вірно!", f.className = "text-green-600";
+    else f.innerHTML = `❌ Правильно: ${v.base} - ${v.past} - ${v.participle}`, f.className = "text-red-600";
+    chk.textContent = "Наступне слово →"; chk.onclick = () => { currentTaskIndex++; nextDrillTask(); };
+  };
+}
+function bEl(id){return document.getElementById(id).value.trim().toLowerCase();}
 
-                    <div class="p-4 bg-white rounded-lg border border-indigo-200 mt-4">
-                        <p class="text-md font-semibold text-gray-700 mb-2">Англійською (заповніть пропуск):</p>
-                        <p class="text-xl font-mono text-gray-800 mb-4">${enSentenceWithGap} <span class="text-sm text-gray-400"> (Завдання ${currentTaskIndex + 1}/${allSentences.length})</span></p>
-                        <input type="text" id="inpEng" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition duration-150" placeholder="Введіть пропущене слово" />
-                    </div>
-                    
-                    <button id="testCheckBtn" class="w-full mt-4 py-3 px-4 bg-emerald-500 text-white font-semibold rounded-lg hover:bg-emerald-600 transition duration-200 shadow-md">
-                        Перевірити
-                    </button>
+// ===== ТЕСТ =====
+function renderTestMode() {
+  currentMode = 'test'; updateBackButton("← До меню", true);
+  mainTitle.textContent = `Тест ${currentGroupIndex}`;
+  initTest(); nextTest();
+}
+function initTest() {
+  allSentences = []; let i = 0;
+  currentGroupData.forEach(v => { allSentences.push({...v.exampleSentences[i], verbObject:v}); i=(i+1)%v.exampleSentences.length; });
+  for (let i = allSentences.length-1; i>0; i--){const j=Math.floor(Math.random()*(i+1));[allSentences[i],allSentences[j]]=[allSentences[j],allSentences[i]];}
+  currentTaskIndex=0; correctAnswers=0;
+}
+function nextTest() {
+  if (currentTaskIndex>=allSentences.length) return content.innerHTML=`<div class="p-6 text-center text-lg md:text-xl text-green-600 font-bold">✅ Тест завершено! ${correctAnswers}/${allSentences.length}</div>`;
+  const t = allSentences[currentTaskIndex];
+  content.innerHTML = `
+  <div class="text-center">
+    <p class="italic text-gray-700 mb-2">${t.uk}</p>
+    <p class="font-mono text-lg mb-4">${t.en}</p>
+    <input id="ans" class="border p-3 rounded w-full max-w-xs mb-2 text-center" placeholder="Введіть слово">
+    <div id="fb" class="mt-2 text-lg"></div>
+    <button id="chk" class="w-full md:w-auto py-3 px-6 bg-emerald-500 text-white rounded-lg">Перевірити</button>
+  </div>`;
+  const ans=document.getElementById("ans"),chk=document.getElementById("chk"),fb=document.getElementById("fb");
+  chk.onclick=()=>{const a=ans.value.trim().toLowerCase(),corr=t.missingWord.toLowerCase();
+    if(a===corr){fb.textContent="✅ Правильно!";fb.className="text-green-600";correctAnswers++;}
+    else{fb.textContent=`❌ Неправильно. ${corr}`;fb.className="text-red-600";}
+    chk.textContent="Наступне речення →";chk.onclick=()=>{currentTaskIndex++;nextTest();};
+  };
+}
 
-                    <div id="feedback" class="text-center font-bold pt-2"></div>
-                </div>
-                <div class="mt-4 text-sm text-gray-600 text-center">
-                    <p>Поточний рахунок: <span id="correctCount" class="font-bold text-green-600">${correctAnswers}</span> / ${allSentences.length}</p>
-                </div>
-            `;
-            
-            // --- ДОДАВАННЯ ЛОГІКИ ПЕРЕВІРКИ ---
-            const checkBtn = document.getElementById("testCheckBtn");
-            const inputField = document.getElementById("inpEng");
-            
-            const checkHandler = () => {
-                const inpEng = inputField.value.trim().toLowerCase();
-                const feedback = document.getElementById("feedback");
-                
-                checkBtn.disabled = true;
-                inputField.disabled = true;
-
-                // Перевірка на співпадіння з будь-якою можливою коректною формою
-                const isCorrect = possibleCorrectWords.includes(inpEng);
-
-                if (isCorrect) {
-                    // ✅ Правильна відповідь
-                    feedback.innerHTML = `<span class="text-green-600 text-lg">✅ Вірно! Слово: ${correctWord}</span>`;
-                    correctAnswers++;
-                    document.getElementById("correctCount").textContent = correctAnswers;
-                    inputField.classList.add('border-green-500', 'border-2');
-
-                } else {
-                    // ❌ Неправильна відповідь: показуємо правильну і рухаємося далі
-                    feedback.innerHTML = `
-                        <span class="text-red-600 text-lg">❌ Невірно.</span> 
-                        <br>
-                        <span class="text-indigo-700 font-extrabold text-xl">Правильно: ${correctWord}</span>
-                    `;
-                    inputField.classList.add('border-red-500', 'border-2');
-                }
-                
-                // Спільна логіка для переходу до наступного завдання
-                checkBtn.textContent = "Наступне завдання →";
-                checkBtn.onclick = () => { currentTaskIndex++; generateTestTask(); };
-                checkBtn.disabled = false; // Знову активуємо для кнопки "Наступне"
-                checkBtn.classList.remove('bg-emerald-500', 'hover:bg-emerald-600');
-                checkBtn.classList.add('bg-indigo-600', 'hover:bg-indigo-700');
-            };
-
-            // Обробники подій
-            checkBtn.onclick = checkHandler;
-            inputField.addEventListener('keyup', (event) => {
-                if (event.key === 'Enter' && checkBtn.textContent === 'Перевірити') {
-                    checkHandler();
-                }
-            });
-            
-            inputField.focus();
-        };
-
-        // Налаштування глобального обробника кнопки "Назад"
-        backBtn.onclick = handleBack;
-        
-        // Запуск при завантаженні сторінки
-        window.onload = renderHome;
-
-    </script>
+// ===== СТАРТ =====
+backBtn.onclick = handleBack;
+window.onload = renderHome;
+</script>
 </body>
 </html>
