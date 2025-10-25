@@ -2333,12 +2333,103 @@ const verbs = [
 ];
 
 // ===== ОЗВУЧЕННЯ =====
+let availableVoices = [];
+let selectedVoice = null;
+
+// Завантажуємо голоси
+function loadVoices() {
+  availableVoices = speechSynthesis.getVoices();
+  if (availableVoices.length > 0 && !selectedVoice) {
+    selectedVoice = availableVoices.find(v => v.lang === "en-US") || availableVoices[0];
+  }
+}
+
+// Підвантаження голосів у Safari / мобільних
+speechSynthesis.onvoiceschanged = loadVoices;
+loadVoices();
+
+// ГОЛОВНА ФУНКЦІЯ ОЗВУЧЕННЯ
 function speak(text) {
+  if (!selectedVoice) loadVoices();
   const u = new SpeechSynthesisUtterance(text);
-  u.lang = "en-US"; u.rate = 0.9;
+  u.lang = selectedVoice?.lang || "en-US";
+  u.voice = selectedVoice || null;
+  u.rate = 0.9;
+  u.pitch = 1;
   window.speechSynthesis.cancel();
   window.speechSynthesis.speak(u);
 }
+
+// 🔊 Розблокування озвучення на мобільних
+function unlockTTS() {
+  try {
+    const u = new SpeechSynthesisUtterance(' ');
+    u.volume = 0;
+    speechSynthesis.speak(u);
+    document.removeEventListener('click', unlockTTS);
+    document.removeEventListener('touchstart', unlockTTS);
+  } catch (e) {}
+}
+
+document.addEventListener('click', unlockTTS);
+document.addEventListener('touchstart', unlockTTS);
+
+// 🔽 Селектор голосів із можливістю прослухати
+function populateVoiceSelector() {
+  const container = document.createElement("div");
+  container.className = "mb-4 text-center flex flex-col items-center";
+
+  const label = document.createElement("label");
+  label.textContent = "🎙 Оберіть голос:";
+  label.className = "block text-sm text-gray-600 mb-1";
+  container.appendChild(label);
+
+  const row = document.createElement("div");
+  row.className = "flex items-center gap-2";
+
+  const select = document.createElement("select");
+  select.className = "border rounded p-2 text-sm max-w-xs";
+  select.id = "voiceSelect";
+
+  availableVoices.forEach((v, i) => {
+    const opt = document.createElement("option");
+    opt.value = i;
+    opt.textContent = `${v.name} (${v.lang})`;
+    select.appendChild(opt);
+  });
+
+  select.onchange = () => {
+    selectedVoice = availableVoices[select.value];
+  };
+
+  // Кнопка "Прослухати голос"
+  const previewBtn = document.createElement("button");
+  previewBtn.textContent = "🎧 Прослухати";
+  previewBtn.className = "py-2 px-4 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 transition";
+  previewBtn.onclick = () => {
+    const voice = availableVoices[select.value];
+    if (voice) {
+      const sample = new SpeechSynthesisUtterance("Hello! This is my voice.");
+      sample.voice = voice;
+      sample.lang = voice.lang;
+      speechSynthesis.cancel();
+      speechSynthesis.speak(sample);
+    }
+  };
+
+  row.appendChild(select);
+  row.appendChild(previewBtn);
+  container.appendChild(row);
+
+  const app = document.getElementById("app");
+  app.prepend(container);
+}
+
+// Коли голоси доступні — створюємо селектор
+speechSynthesis.onvoiceschanged = () => {
+  loadVoices();
+  populateVoiceSelector();
+};
 
 // ===== КНОПКА НАЗАД =====
 function updateBackButton(text, visible) {
@@ -2349,6 +2440,7 @@ function handleBack() {
   if (["study", "drill", "test"].includes(currentMode)) selectGroup(currentGroupIndex);
   else if (currentMode === "selectGroup") renderHome();
 }
+
 
 // ===== ГОЛОВНИЙ ЕКРАН =====
 function renderHome() {
@@ -2400,8 +2492,11 @@ function renderDrillMode() {
   nextDrillTask();
 }
 function nextDrillTask() {
-  if (currentTaskIndex >= currentGroupData.length) return content.innerHTML = `<div class="p-6 text-center text-green-700 font-bold text-lg">✅ Усі слова пройдено!</div>`;
+  if (currentTaskIndex >= currentGroupData.length)
+    return content.innerHTML = `<div class="p-6 text-center text-green-700 font-bold text-lg">✅ Усі слова пройдено!</div>`;
+
   const v = currentGroupData[currentTaskIndex];
+
   content.innerHTML = `
   <div class="text-center">
     <p class="text-xl md:text-2xl font-bold text-yellow-700 mb-2">${v.translation}</p>
@@ -2411,12 +2506,22 @@ function nextDrillTask() {
     <div id="feed" class="mt-2 text-lg"></div>
     <button id="chk" class="w-full md:w-auto py-3 px-6 bg-yellow-500 text-white font-semibold rounded-lg">Перевірити</button>
   </div>`;
+
   const chk = document.getElementById("chk");
   chk.onclick = () => {
-    const b = bEl("b"), p = bEl("p"), pp = bEl("pp"), f = bEl("feed");
-    if (b === v.base && p === v.past && pp === v.participle) f.innerHTML = "✅ Вірно!", f.className = "text-green-600";
-    else f.innerHTML = `❌ Правильно: ${v.base} - ${v.past} - ${v.participle}`, f.className = "text-red-600";
-    chk.textContent = "Наступне слово →"; chk.onclick = () => { currentTaskIndex++; nextDrillTask(); };
+    const b = bEl("b"), p = bEl("p"), pp = bEl("pp");
+    const f = document.getElementById("feed"); // ← ось тут зміна
+
+    if (b === v.base && p === v.past && pp === v.participle) {
+      f.innerHTML = "✅ Вірно!";
+      f.className = "text-green-600";
+    } else {
+      f.innerHTML = `❌ Правильно: ${v.base} - ${v.past} - ${v.participle}`;
+      f.className = "text-red-600";
+    }
+
+    chk.textContent = "Наступне слово →";
+    chk.onclick = () => { currentTaskIndex++; nextDrillTask(); };
   };
 }
 function bEl(id){return document.getElementById(id).value.trim().toLowerCase();}
